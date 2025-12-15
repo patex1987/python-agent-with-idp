@@ -323,7 +323,7 @@ configuration/local_or_ide/local_development.env
 Run the service:
 
 ```
-python throttling_sequencer_fastapi/manage.py
+python llm_agent/manage.py
 ````
 
 This executes `manage.py`, which:
@@ -334,7 +334,7 @@ This executes `manage.py`, which:
 
 ### 4.2. Running with Docker (Development Mode)
 
-Inside `throttling_sequencer_fastapi` run:
+Inside `llm_agent` run:
 
 ```sh
 docker build --target dev -t throttling_seq:local_dev -f ./Dockerfile .
