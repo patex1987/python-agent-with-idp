@@ -19,7 +19,6 @@ dependencies = [
     "opentelemetry-sdk>=1.34.1",
     "piccolo[postgres]>=1.28.0",
     "pydantic-settings>=2.10.1",
-    "strawberry-graphql>=0.270.1",
     "structlog>=25.3.0",
     "svcs>=25.1.0",
     "uvicorn>=0.34.2",

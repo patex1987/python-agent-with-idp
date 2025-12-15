@@ -62,7 +62,7 @@ class WebSocketTokenExtractor:
     """
     Extracts JWT tokens from WebSocket connection_init messages.
 
-    For GraphQL over WebSocket, tokens are typically sent in the connection_init
+    For WebSocket connections, tokens are typically sent in the connection_init
     message payload as:
     ```
     {

@@ -7,8 +7,6 @@ import os
 
 from piccolo.conf.apps import AppConfig
 
-from throttling_sequencer.repositories.piccolo.request_meta.table import GqlRequestInfoTable
-
 CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -20,7 +18,7 @@ APP_CONFIG = AppConfig(
     #     package=get_package(__name__),
     #     exclude_imported=True,
     # ),
-    table_classes=[GqlRequestInfoTable],
+    table_classes=[],
     migration_dependencies=[],
     commands=[],
 )

@@ -1,7 +1,6 @@
 import fastapi
 import svcs
 
-from throttling_sequencer.api.graphql.router import create_graphql_router
 from throttling_sequencer.api.http.middlewares.authentication import (
     AuthenticationMiddleware,
 )
@@ -30,9 +29,6 @@ def create_app(*, registry: svcs.Registry) -> fastapi.FastAPI:
 
     app.include_router(router=health_router, prefix="/api/v1/health", tags=["health"])
     app.include_router(router=throttle_router, prefix="/api/v1/throttle", tags=["throttle"])
-
-    graphql_router = create_graphql_router()
-    app.include_router(router=graphql_router, prefix="/graphql", tags=["graphql"])
 
     instrument_for_telemetry(app)
 

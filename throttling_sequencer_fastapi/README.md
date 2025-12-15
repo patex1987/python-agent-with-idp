@@ -21,7 +21,7 @@ To execute the service immediately:
 docker run -it -p 8080:8080 \
   --env-file "/home/patex1987/development/throttling_sequencer_webapp/configuration/docker/local_development.env"  \
   --rm \
-  fastapi_graphql:local_dev
+  fastapi_rest:local_dev
 ```
 
 Output:
@@ -39,7 +39,7 @@ To execute the container with a shell session:
 docker run -it -p 8080:8080 \
   --env-file "/home/patex1987/development/throttling_sequencer_webapp/configuration/docker/local_development.env"  \
   --rm \
-  fastapi_graphql:local_dev \
+  fastapi_rest:local_dev \
   /bin/bash
 ```
 
@@ -61,17 +61,17 @@ CMD ["python", "manage.py"]
 1. Navigate to the `throttling_sequencer_fastapi` folder
 2. Execute:
 ```shell
-docker build --target dev -t fastapi_graphql:local_dev -f ./Dockerfile .
+docker build --target dev -t fastapi_rest:local_dev -f ./Dockerfile .
 ```
 
 enter the container with non-running service:
 ```shell
-docker run -it --rm fastapi_graphql:local_dev /bin/bash 
+docker run -it --rm fastapi_rest:local_dev /bin/bash 
 ```
 
 ### Build in production mode
 1. Navigate to the `throttling_sequencer_fastapi` folder
 2. Execute:
 ```shell
-docker build --target prod -t fastapi_graphql:local_prod -f ./Dockerfile .
+docker build --target prod -t fastapi_rest:local_prod -f ./Dockerfile .
 ```

@@ -22,7 +22,7 @@ class DependencyOverrideRegistrar(Registrar):
     Example:
 
         registrar = OverridableRegistrar(
-            factory_overrides={AsyncGqlRequestRepository: InMemoryRepository},
+            factory_overrides={SomeRepository: InMemoryRepository},
             value_overrides={GameStateRetriever: FakeGameStateRetriever()}
         )
 
