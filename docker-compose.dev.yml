@@ -1,19 +1,19 @@
 version: "3.9"
 services:
-  throttling-sequencer-fastapi:
+  llm-agent:
     build:
-      context: ./throttling_sequencer_fastapi
+      context: ./llm_agent
       dockerfile: Dockerfile
       target: dev
-    image: fastapi_graphql:local_dev
+    image: fastapi_rest:local_dev
     ports:
       - "8080:8080"
     env_file:
       - ./configuration/docker/local_development.env
     volumes:
-      - ./throttling_sequencer_fastapi/throttling_sequencer:/app/throttling_sequencer
+      - ./llm_agent/llm_agent:/app/llm_agent
     command:
-#       ["uvicorn","throttling_sequencer.app:create_app","--host","0.0.0.0","--port","8080","--reload","--log-config","./throttling_sequencer/configuration/log_config_json.json","--factory"]
+#       ["uvicorn","llm_agent.app:create_app","--host","0.0.0.0","--port","8080","--reload","--log-config","./llm_agent/configuration/log_config_json.json","--factory"]
        ["python", "manage.py"]
 #      [ "tail", "-f", "/dev/null" ]
 

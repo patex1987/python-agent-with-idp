@@ -3,13 +3,13 @@ version: "3.9"
 # ha proxy can be used to easily swap the primary and emulate outages and switchovers
 
 services:
-  throttling-sequencer-fastapi:
+  llm-agent:
     profiles: ["app"]
     build:
-      context: ./throttling_sequencer_fastapi
+      context: ./llm_agent
       dockerfile: Dockerfile
       target: prod
-    image: fastapi_graphql:local_prod
+    image: fastapi_rest:local_prod
     depends_on:
       migrate-db1:
         condition: service_completed_successfully
@@ -61,7 +61,7 @@ services:
   # migrate db 1 using piccolo orm
   migrate-db1:
     # TODO: change this to building from dockerfile
-    image: fastapi_graphql:local_prod
+    image: fastapi_rest:local_prod
     depends_on:
       pg-backend-1:
         condition: service_healthy
@@ -80,7 +80,7 @@ services:
   # migrate db 2 using piccolo orm
   migrate-db2:
     # TODO: change this to building from dockerfile
-    image: fastapi_graphql:local_prod
+    image: fastapi_rest:local_prod
     depends_on:
       pg-backend-2:
         condition: service_healthy

@@ -1,11 +1,11 @@
 version: "3.9"
 services:
-  throttling-sequencer-fastapi:
+  llm-agent:
     build:
-      context: ./throttling_sequencer_fastapi
+      context: ./llm_agent
       dockerfile: Dockerfile
       target: prod
-    image: fastapi_graphql:local_prod
+    image: fastapi_rest:local_prod
     ports:
       - "8080:8080"
     env_file:
