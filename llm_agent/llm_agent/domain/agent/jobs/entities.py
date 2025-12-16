@@ -25,7 +25,6 @@ class EnqueuedJob:
     id: UUID
 
 
-
 class JobStatusCode(Enum):
     """
     CREATED
@@ -68,15 +67,19 @@ class JobStatusCode(Enum):
     RUNNING    → TIMED_OUT
     TIMED_OUT  → RETRYING
     RETRYING   → ENQUEUED
+
+    TODO: CANCELLATION NOT SUPPORTED YET
     """
-    CREATED=1
-    ENQUEUED=2
-    RUNNING=3
-    SUCCEEDED=4
-    FAILED=5
-    CANCELLED=6
-    TIMED_OUT=7
-    RETRYING=8
+
+    CREATED = 1
+    ENQUEUED = 2
+    RUNNING = 3
+    SUCCEEDED = 4
+    FAILED = 5
+    CANCELLED = 6
+    TIMED_OUT = 7
+    RETRYING = 8
+
 
 @dataclass(frozen=True)
 class JobStatus:
