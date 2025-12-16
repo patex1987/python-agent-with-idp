@@ -19,8 +19,8 @@ def generate_fake_jwt_token() -> str:
     token = jwt.encode(payload=payload, key="secret", header={"alg": "HS256"})
     return token
 
-class FakeExecutionContextEnricher(ExecutionContextEnricher):
 
+class FakeExecutionContextEnricher(ExecutionContextEnricher):
     @contextlib.contextmanager
     def enrich_from_scope(self, scope: starlette.types.Scope):
         scope.setdefault("state", {})

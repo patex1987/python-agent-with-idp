@@ -27,4 +27,3 @@ class TokenExtractor(Protocol):
         :return: JWT token string if found, None otherwise
         """
         ...
-

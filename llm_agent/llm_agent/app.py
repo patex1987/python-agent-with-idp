@@ -5,6 +5,7 @@ from llm_agent.api.http.middlewares.authentication import (
     AuthenticationMiddleware,
 )
 from llm_agent.api.http.middlewares.execution import ExecutionContextMiddleware
+from llm_agent.api.http.v1.routes.agent import agent_router
 from llm_agent.api.http.v1.routes.health import health_router
 from llm_agent.api.http.v1.routes.throttle_steps_calculator import throttle_router
 from llm_agent.application.authentication.manager import AsyncAuthenticationManager
@@ -29,6 +30,7 @@ def create_app(*, registry: svcs.Registry) -> fastapi.FastAPI:
 
     app.include_router(router=health_router, prefix="/api/v1/health", tags=["health"])
     app.include_router(router=throttle_router, prefix="/api/v1/throttle", tags=["throttle"])
+    app.include_router(router=agent_router, prefix="/api/v1/agent", tags=["agent"])
 
     instrument_for_telemetry(app)
 
@@ -49,4 +51,6 @@ def register_middlewares(app: fastapi.FastAPI, di_container: svcs.Container) -> 
     dependencies (e.g. authentication, request context, logging).
     """
     app.add_middleware(AuthenticationMiddleware, authentication_manager=di_container.get(AsyncAuthenticationManager))
-    app.add_middleware(ExecutionContextMiddleware, execution_context_enricher=di_container.get(ExecutionContextEnricher))
+    app.add_middleware(
+        ExecutionContextMiddleware, execution_context_enricher=di_container.get(ExecutionContextEnricher)
+    )

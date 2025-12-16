@@ -17,4 +17,3 @@ class RequestContextVars:
     """
 
     JWT_TOKEN: contextvars.ContextVar[str | None] = contextvars.ContextVar("jwt_token", default=None)
-

@@ -9,15 +9,12 @@ from llm_agent.di.registrars.base import Registrar
 from llm_agent.infrastructure.authentication.jwt_manager import JwtAuthenticationManager
 from llm_agent.infrastructure.authentication.jwt_validator import JWTValidationClient
 from llm_agent.infrastructure.execution_context.production import ProductionContextEnricher
-from llm_agent.infrastructure.execution_context.token_extractors import HttpTokenExtractor, \
-    WebSocketTokenExtractor
+from llm_agent.infrastructure.execution_context.token_extractors import HttpTokenExtractor, WebSocketTokenExtractor
 from llm_agent.infrastructure.service_discovery.static.static_oidc import StaticOpenIdConfigurationProvider
 
 
 class ProdAuthRegistrar(Registrar):
-
     def register(self, registry: svcs.Registry) -> None:
-
         openid_conf_provider = self.__class__.create_openid_conf_provider()
         token_validation_client = self.__class__.create_token_validation_client()
 

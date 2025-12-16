@@ -1,6 +1,7 @@
 """
 Authlib-based token validation client for OpenID Connect identity providers.
 """
+
 import httpx
 
 from authlib.jose import jwt
@@ -80,11 +81,7 @@ class JWTValidationClient(TokenValidationClient):
         Build a synchronous key loader for Authlib.
         """
 
-        keys_by_kid = {
-            key["kid"]: key
-            for key in jwks.get("keys", [])
-            if "kid" in key
-        }
+        keys_by_kid = {key["kid"]: key for key in jwks.get("keys", []) if "kid" in key}
 
         def load_key(header, payload):
             kid = header.get("kid")
