@@ -1,6 +1,3 @@
-# TODO: move to a separate commit
-
-
 import fastapi
 import starlette.types
 

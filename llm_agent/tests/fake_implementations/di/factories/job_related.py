@@ -7,7 +7,8 @@ rest api and the workers
 import uuid
 from collections import deque
 
-from llm_agent.domain.agent.jobs.entities import JobStatus, JobEvent
+from llm_agent.domain.agent.jobs.status import JobStatus
+from llm_agent.domain.agent.jobs.event import JobEvent
 
 
 class InternalJobStorageProvider:

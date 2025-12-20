@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol, AsyncIterator
 from uuid import UUID
 
-from llm_agent.domain.agent.jobs.entities import JobEvent
+from llm_agent.domain.agent.jobs.event import JobEvent
 
 
 class JobNotifier(Protocol):

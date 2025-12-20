@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import UUID
 
-from llm_agent.domain.agent.jobs.entities import JobRequest, EnqueuedJob, JobStatus, JobEvent, ClaimedJob
+from llm_agent.domain.agent.jobs.entities import EnqueuedJob
+from llm_agent.domain.agent.jobs.claim import ClaimedJob
+from llm_agent.domain.agent.jobs.request import JobRequest
+from llm_agent.domain.agent.jobs.status import JobStatus
+from llm_agent.domain.agent.jobs.event import JobEvent
 
 
 class JobStore(Protocol):

@@ -1,8 +1,10 @@
-from llm_agent.domain.agent.jobs.entities import DEFAULT_TRANSITION_RULES, JobStatus, JobStatusCode
+from llm_agent.domain.agent.jobs.transition_rules import DEFAULT_TRANSITION_RULES
+from llm_agent.domain.agent.jobs.status_code import JobStatusCode
+from llm_agent.domain.agent.jobs.status import JobStatus
 
 
 class JobTransitionPolicy:
-    def __init__(self, transition_rules: dict | None = None):
+    def __init__(self, transition_rules: dict[JobStatusCode, tuple[JobStatusCode]] | None = None):
         """
         TODO: missing DI
         :param transition_rules:
@@ -13,7 +15,8 @@ class JobTransitionPolicy:
 
     def validate(self, job_status: JobStatus, new_status: JobStatusCode) -> None:
         """
-        TODO: implement
+        Validate if the transition to the desired job status is allowed and valid.
+
         :param job_status:
         :param new_status:
         :return:

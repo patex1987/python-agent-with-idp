@@ -1,6 +1,8 @@
 import uuid
 
-from llm_agent.domain.agent.jobs.entities import EnqueuedJob, JobRequest, JobStatus
+from llm_agent.domain.agent.jobs.entities import EnqueuedJob
+from llm_agent.domain.agent.jobs.request import JobRequest
+from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobIntakeStore
 
