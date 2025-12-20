@@ -1,3 +1,7 @@
+"""
+TODO: refactor into smaller pieces
+"""
+
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
@@ -23,6 +27,17 @@ class EnqueuedJob:
     """
 
     id: UUID
+
+
+@dataclass(frozen=True)
+class ClaimedJob:
+    """
+    Api agent job execution status.
+    """
+
+    id: UUID
+    claim_type: enqueued | running_lost_claim
+    job_status: JobStatus
 
 
 class JobStatusCode(Enum):
@@ -81,6 +96,23 @@ class JobStatusCode(Enum):
     RETRYING = 8
 
 
+DEFAULT_TRANSITION_RULES = {
+    JobStatusCode.CREATED: (JobStatusCode.ENQUEUED,),
+    JobStatusCode.ENQUEUED: (JobStatusCode.RUNNING,),
+    JobStatusCode.RUNNING: (
+        JobStatusCode.SUCCEEDED,
+        JobStatusCode.FAILED,
+        JobStatusCode.CANCELLED,
+        JobStatusCode.TIMED_OUT,
+    ),
+    JobStatusCode.SUCCEEDED: tuple(),
+    JobStatusCode.FAILED: tuple(),
+    JobStatusCode.CANCELLED: tuple(),
+    JobStatusCode.TIMED_OUT: (JobStatusCode.RETRYING,),
+    JobStatusCode.RETRYING: (JobStatusCode.ENQUEUED,),
+}
+
+
 @dataclass(frozen=True)
 class JobStatus:
     """
@@ -89,9 +121,11 @@ class JobStatus:
 
     id: UUID
     status: JobStatusCode
-    progress: float | None
     result: dict[str, Any] | None
     error: str | None
+    claimed_worker: str | None = None
+    claim_expiration_unix_ts: float | None = None
+    retry_count: int | None = 0
 
 
 @dataclass(frozen=True)

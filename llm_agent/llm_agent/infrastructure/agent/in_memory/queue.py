@@ -1,36 +1,45 @@
 import asyncio
-from collections import deque
-from uuid import UUID
 
-from llm_agent.services.agent.queue import JobQueue
+from llm_agent.services.agent.queue import JobSignalQueue
 
 
-class InMemoryJobQueue(JobQueue):
-    def __init__(self, internal_job_queue: deque[UUID]):
-        self._internal_queue = internal_job_queue
-        self._lock = asyncio.Lock()
+class InMemoryJobSignalQueue(JobSignalQueue):
+    """
+    Signals to wake up the worker.
 
-    async def enqueue(self, job_id: UUID) -> None:
+    Either receiving an event from the orchestrator (rest api), or a default timeout.
+
+        | Situation              | Result                       |
+        | ---------------------- | ---------------------------- |
+        | Job enqueued           | immediate wakeup             |
+        | Worker crash elsewhere | timeout triggers recovery    |
+        | Missed notify          | timeout saves you            |
+        | No jobs                | periodic lightweight polling |
+        | Shutdown               | loop exits cleanly           |
+    """
+
+    def __init__(self):
+        self._event = asyncio.Event()
+        self._default_timeout = 5
+
+    async def wait(self, timeout: None | float = None) -> None:
         """
-        add a job to the queue
-        """
-        async with self._lock:
-            self._internal_queue.append(job_id)
+        Wait for notification signal or the timeout.
 
-    async def claim_next(self, worker_id: str) -> UUID | None:
+        :param timeout:
+        :return:
         """
-        Worker is looking for a new job to execute
+        timeout = timeout or self._default_timeout
 
-        TODO: verify the job state when claiming
-        """
-        async with self._lock:
-            if not self._internal_queue:
-                return None
-            return self._internal_queue.popleft()
+        try:
+            await asyncio.wait_for(self._event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            pass
+        finally:
+            self._event.clear()
 
-    async def heartbeat(self, job_id: UUID, worker_id: str) -> None:
+    async def notify(self) -> None:
         """
-        TODO: to be implemented later
+        Notify the workers there is a new job.
         """
-
-        return
+        self._event.set()

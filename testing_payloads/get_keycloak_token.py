@@ -19,7 +19,6 @@ Environment Variables:
 
 import os
 import sys
-from typing import Optional
 
 import httpx
 

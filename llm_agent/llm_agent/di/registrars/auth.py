@@ -1,5 +1,4 @@
 import svcs
-from pycparser.ply.yacc import Production
 
 from llm_agent.application.authentication.manager import AsyncAuthenticationManager
 from llm_agent.application.authentication.oidc_configuration_provider import OpenIdConfigurationProvider

@@ -29,6 +29,7 @@ class InternalEventLogsProvider:
             cls._instance = {}
         return cls._instance
 
+
 class InternalJobQueueProvider:
     _instance = None
 

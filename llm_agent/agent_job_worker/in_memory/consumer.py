@@ -1,13 +1,15 @@
 import asyncio
 import random
 from typing import Protocol
+from uuid import UUID
 
 import structlog
 
-from llm_agent.services.agent.queue import JobQueue
-from llm_agent.services.agent.store import JobStore
+from llm_agent.services.agent.queue import JobSignalQueue
+from llm_agent.services.agent.store import JobProcessingStore
 
 logger = structlog.get_logger(__name__)
+
 
 class Consumer(Protocol):
     async def consume_and_execute_loop(self): ...
@@ -16,39 +18,34 @@ class Consumer(Protocol):
 
 
 class InMemoryConsumer(Consumer):
-    def __init__(self, job_store: JobStore, job_queue: JobQueue, worker_id: str):
+    def __init__(self, job_store: JobProcessingStore, job_signal_queue: JobSignalQueue, worker_id: str):
         self.job_store = job_store
-        self.job_queue = job_queue
+        self.job_signal_queue = job_signal_queue
         self._execution_allowed = True
-        self.worker_id = "worker-1"
+        self.worker_id = worker_id
 
     async def consume_and_execute_loop(self):
         """
-        TODO: [CRITICAL] move the state transition to JobStore (or elsewhere),
-            and validate if the given change is allowed
         TODO: refactor into smaller unit. Use the following at least:
             - consumer loop
             - job executor
             - execution policy
         TODO: implement the notifier and hook into relevant events
+        TODO: add a concurrent health checker, so it's literally just
+            checking if the worker is running
         """
         while self._execution_allowed:
-            job_id = await self.job_queue.claim_next(self.worker_id)
-            if not job_id:
-                await asyncio.sleep(0.1)
+            await self.job_signal_queue.wait()
+            enqueued_job = await self.job_store.claim_job(self.worker_id)
+            if not enqueued_job:
                 continue
 
+            job_id = enqueued_job.id
             logger.info(f"{self.worker_id}: executing job", job_id=job_id)
-            await self.job_store.set_running(job_id, self.worker_id)
             # await notifier.publish(JobEvent(job_id, "started", {}))
 
             try:
-                for i in range(5):
-                    logger.info(f"{self.worker_id}: Running job step", job_id=job_id, step=i)
-                    step_execution_time = random.randint(2, 7)
-                    await asyncio.sleep(step_execution_time)
-                    await self.job_store.set_progress(job_id, i / 5, {"step": i})
-                    # await notifier.publish(JobEvent(job_id, "progress", {"step": i}))
+                await execute_agent_job(job_id, self.worker_id, self.job_store)
 
                 logger.info(f"{self.worker_id}: job done", job_id=job_id)
                 await self.job_store.set_succeeded(job_id, {"ok": True})
@@ -60,3 +57,20 @@ class InMemoryConsumer(Consumer):
 
     async def shutdown_execution(self):
         self._execution_allowed = False
+
+async def execute_agent_job(job_id: UUID, worker_id: str, job_store: JobProcessingStore):
+    """
+    TODO: just a poc, move to a dedicated configurable class
+
+    :param job_id:
+    :param worker_id:
+    :param job_store:
+    :return:
+    """
+    for i in range(5):
+        logger.info(f"{worker_id}: Running job step", job_id=job_id, step=i)
+        step_execution_time = random.randint(0, 4)
+        await asyncio.sleep(step_execution_time)
+        await job_store.heartbeat(job_id, worker_id)
+        # await self.job_store.set_progress(job_id, i / 5, {"step": i})
+        # await notifier.publish(JobEvent(job_id, "progress", {"step": i}))

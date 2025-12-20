@@ -6,16 +6,16 @@ from pydantic import BaseModel
 from llm_agent.api.http.v1.dto.agent_prompt import AgentPromptDto
 from llm_agent.domain.agent.jobs.entities import EnqueuedJob
 from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
-from llm_agent.services.agent.queue import JobQueue
-from llm_agent.services.agent.store import JobStore
+from llm_agent.services.agent.queue import JobSignalQueue
+from llm_agent.services.agent.store import JobIntakeStore
 
 agent_router = APIRouter()
 
 
 def get_job_service(services: svcs.fastapi.DepContainer) -> BackendJobOrchestrationService:
     return BackendJobOrchestrationService(
-        job_store=services.get(JobStore),
-        job_queue=services.get(JobQueue),
+        job_store=services.get(JobIntakeStore),
+        job_signal_queue=services.get(JobSignalQueue),
     )
 
 
@@ -49,4 +49,3 @@ async def get_agent_job(
 ):
     job_status = await job_service.get_job(job_id)
     return JobExecutionStatusDto(status=job_status.status.name)
-
