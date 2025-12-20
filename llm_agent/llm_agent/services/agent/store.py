@@ -3,29 +3,14 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import UUID
 
-from llm_agent.domain.agent.jobs.entities import EnqueuedJob
 from llm_agent.domain.agent.jobs.claim import ClaimedJob
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
 
 
-class JobStore(Protocol):
-    async def create_job(self, job_request: JobRequest) -> EnqueuedJob: ...
-
-    async def get_status(self, job_id: UUID) -> JobStatus: ...
-
-    async def set_progress(self, job_id: UUID, progress: float, payload: dict) -> None: ...
-
-    async def set_succeeded(self, job_id: UUID, result: dict) -> None: ...
-
-    async def set_failed(self, job_id: UUID, error: str) -> None: ...
-
-    async def append_event(self, evt: JobEvent) -> None: ...
-
-
 class JobIntakeStore(Protocol):
-    async def create_job(self, job_request: JobRequest) -> EnqueuedJob: ...
+    async def create_job(self, job_request: JobRequest) -> JobStatus: ...
 
     async def get_status(self, job_id: UUID) -> JobStatus: ...
 

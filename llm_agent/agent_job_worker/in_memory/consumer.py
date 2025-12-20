@@ -58,6 +58,7 @@ class InMemoryConsumer(Consumer):
     async def shutdown_execution(self):
         self._execution_allowed = False
 
+
 async def execute_agent_job(job_id: UUID, worker_id: str, job_store: JobProcessingStore):
     """
     TODO: just a poc, move to a dedicated configurable class

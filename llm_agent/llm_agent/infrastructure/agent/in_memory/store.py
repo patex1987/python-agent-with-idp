@@ -7,7 +7,6 @@ from uuid import UUID
 
 import structlog
 
-from llm_agent.domain.agent.jobs.entities import EnqueuedJob
 from llm_agent.domain.agent.jobs.claim import ClaimedJob
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status_code import JobStatusCode
@@ -25,6 +24,7 @@ class InMemoryJobIntakeStore(JobIntakeStore):
         self,
         internal_job_storage: dict[UUID, JobStatus],
         internal_event_logs: dict[UUID, deque[JobEvent]],
+        job_transition_policy: JobTransitionPolicy = JobTransitionPolicy(),
     ):
         """
 
@@ -36,16 +36,13 @@ class InMemoryJobIntakeStore(JobIntakeStore):
         self._jobs = internal_job_storage
         self._events = internal_event_logs
         self._lock = asyncio.Lock()
-        # TODO: DI
-        self.job_transition_policy = JobTransitionPolicy()
+        self.job_transition_policy = job_transition_policy
 
-    async def create_job(self, job_request: JobRequest) -> EnqueuedJob:
+    async def create_job(self, job_request: JobRequest) -> JobStatus:
         """
 
         :param job_request:
         :return:
-
-        TODO: change return type.
         """
         async with self._lock:
             job_id = uuid.uuid4()
@@ -57,7 +54,7 @@ class InMemoryJobIntakeStore(JobIntakeStore):
             )
             self._jobs[job_id] = job_status
             self._events[job_id] = deque()
-            return EnqueuedJob(id=job_id)
+            return job_status
 
     async def get_status(self, job_id: UUID) -> JobStatus:
         return self._jobs[job_id]

@@ -6,6 +6,7 @@ from llm_agent.infrastructure.agent.in_memory.queue import InMemoryJobSignalQueu
 from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobIntakeStore
+from llm_agent.services.agent.transition_policy import JobTransitionPolicy
 from tests.fake_implementations.di.factories.job_related import (
     InternalJobStorageProvider,
     InternalEventLogsProvider,
@@ -37,10 +38,12 @@ class InMemoryJobOrchestrationRegistrar(Registrar):
 
         internal_job_storage = InternalJobStorageProvider.get_instance()
         internal_event_logs = InternalEventLogsProvider.get_instance()
+        job_transition_policy = JobTransitionPolicy()
 
         in_memory_job_store = InMemoryJobIntakeStore(
             internal_job_storage=internal_job_storage,
             internal_event_logs=internal_event_logs,
+            job_transition_policy=job_transition_policy,
         )
         return in_memory_job_store
 

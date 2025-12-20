@@ -1,10 +1,12 @@
+
 import fastapi
 import svcs.fastapi
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from llm_agent.api.http.v1.dto.agent_prompt import AgentPromptDto
-from llm_agent.domain.agent.jobs.entities import EnqueuedJob
+from llm_agent.api.http.v1.dto.created_job import CreatedJobDto
+from llm_agent.api.http.v1.mappers.created_job import CreatedJobV1Mapper
 from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobIntakeStore
@@ -21,7 +23,7 @@ def get_job_service(services: svcs.fastapi.DepContainer) -> BackendJobOrchestrat
 
 @agent_router.post(
     "/create-job",
-    response_model=EnqueuedJob,
+    response_model=CreatedJobDto,
     summary="Compute throttle steps for first player/enemy unit",
 )
 async def create_agent_job(
@@ -29,8 +31,9 @@ async def create_agent_job(
     request: fastapi.Request,
     job_service: BackendJobOrchestrationService = fastapi.Depends(get_job_service),
 ):
-    enqueued_job = await job_service.create_job(agent_prompt.prompt)
-    return enqueued_job
+    created_job_status = await job_service.create_job(agent_prompt.prompt)
+    created_job_dto = CreatedJobV1Mapper.to_dto(created_job_status)
+    return created_job_dto
 
 
 class JobExecutionStatusDto(BaseModel):

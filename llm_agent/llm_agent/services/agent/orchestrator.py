@@ -1,6 +1,5 @@
 import uuid
 
-from llm_agent.domain.agent.jobs.entities import EnqueuedJob
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.services.agent.queue import JobSignalQueue
@@ -12,7 +11,7 @@ class BackendJobOrchestrationService:
         self.job_store = job_store
         self.job_signal_queue = job_signal_queue
 
-    async def create_job(self, prompt: str) -> EnqueuedJob:
+    async def create_job(self, prompt: str) -> JobStatus:
         """
 
         :param prompt:
