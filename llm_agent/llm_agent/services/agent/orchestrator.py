@@ -16,8 +16,6 @@ class BackendJobOrchestrationService:
 
         :param prompt:
         :return:
-
-        TODO: move the job status to CREATED when enqueuing
         """
         job_request = JobRequest(
             prompt=prompt,
