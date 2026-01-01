@@ -6,7 +6,6 @@ from llm_agent.domain.agent.jobs.status import JobStatus
 class JobTransitionPolicy:
     def __init__(self, transition_rules: dict[JobStatusCode, tuple[JobStatusCode]] | None = None):
         """
-        TODO: missing DI
         :param transition_rules:
         """
         if not transition_rules:

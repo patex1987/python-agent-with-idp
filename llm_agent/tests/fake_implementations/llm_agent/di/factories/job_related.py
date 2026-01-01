@@ -9,6 +9,8 @@ from collections import deque
 
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
+from llm_agent.infrastructure.agent.in_memory.queue import InMemoryJobSignalQueue
+from llm_agent.services.agent.queue import JobSignalQueue
 
 
 class InternalJobStorageProvider:
@@ -31,11 +33,11 @@ class InternalEventLogsProvider:
         return cls._instance
 
 
-class InternalJobQueueProvider:
+class JobSignalQueueProvider:
     _instance = None
 
     @classmethod
-    def get_instance(cls) -> deque[uuid.UUID]:
+    def get_instance(cls) -> JobSignalQueue:
         if cls._instance is None:
-            cls._instance = deque()
+            cls._instance = InMemoryJobSignalQueue()
         return cls._instance

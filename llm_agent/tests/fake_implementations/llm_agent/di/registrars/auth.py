@@ -1,6 +1,6 @@
 import svcs
 
-from tests.fake_implementations.infrastructure.auth.fake_manager import FakeAuthManager
+from tests.fake_implementations.llm_agent.infrastructure.auth.fake_manager import FakeAuthManager
 from llm_agent.application.authentication.manager import AsyncAuthenticationManager
 from llm_agent.application.execution_context import ExecutionContextEnricher
 from llm_agent.di.registrars.base import Registrar

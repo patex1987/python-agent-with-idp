@@ -12,6 +12,7 @@ from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
+from llm_agent.domain.agent.jobs.exception import JobNotFoundError
 from llm_agent.services.agent.store import JobIntakeStore, JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
 
@@ -24,7 +25,7 @@ class InMemoryJobIntakeStore(JobIntakeStore):
         self,
         internal_job_storage: dict[UUID, JobStatus],
         internal_event_logs: dict[UUID, deque[JobEvent]],
-        job_transition_policy: JobTransitionPolicy = JobTransitionPolicy(),
+        job_transition_policy: JobTransitionPolicy,
     ):
         """
 
@@ -57,6 +58,8 @@ class InMemoryJobIntakeStore(JobIntakeStore):
             return job_status
 
     async def get_status(self, job_id: UUID) -> JobStatus:
+        if job_id not in self._jobs:
+            raise JobNotFoundError(job_id=str(job_id))
         return self._jobs[job_id]
 
     async def mark_enqueued(self, job_id: UUID) -> None:
@@ -79,11 +82,17 @@ def has_claim_expired(job_status: JobStatus) -> bool:
     return False
 
 
+async def get_new_expiration_ts() -> float:
+    expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
+    return expiration_unix_ts
+
+
 class InMemoryJobProcessingStore(JobProcessingStore):
     def __init__(
         self,
         internal_job_storage: dict[UUID, JobStatus],
         internal_event_logs: dict[UUID, deque[JobEvent]],
+        job_transition_policy: JobTransitionPolicy,
     ):
         """
 
@@ -95,7 +104,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         self._jobs = internal_job_storage
         self._events = internal_event_logs
         self._lock = asyncio.Lock()
-        self.transition_policy = JobTransitionPolicy()
+        self.job_transition_policy = job_transition_policy
 
     async def claim_job(self, worker_id: str) -> ClaimedJob | None:
         """
@@ -105,7 +114,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         """
         for job_id, job_status in self._jobs.items():
             if job_status.status == JobStatusCode.ENQUEUED:
-                expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
+                expiration_unix_ts = await get_new_expiration_ts()
                 await self._transition(
                     job_id, JobStatusCode.RUNNING, worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
                 )
@@ -121,7 +130,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                 await self._transition(job_id, JobStatusCode.RETRYING)
                 await self._transition(job_id, JobStatusCode.ENQUEUED)
                 await self._transition(job_id, JobStatusCode.RUNNING, worker_id=worker_id)
-                expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
+                expiration_unix_ts = await get_new_expiration_ts()
                 await self._transition(
                     job_id, JobStatusCode.RUNNING, worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
                 )
@@ -139,7 +148,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             if job_status.claimed_worker != worker_id:
                 return None
 
-            updated_expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
+            updated_expiration_unix_ts = await get_new_expiration_ts()
 
             self._jobs[job_id] = JobStatus(
                 id=job_status.id,
@@ -167,11 +176,11 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         error: str | None = None,
         worker_id: str | None = None,
         updated_retry_count: int | None = None,
-        expiration_unix_ts: int | None = None,
+        expiration_unix_ts: int | float | None = None,
     ):
         async with self._lock:
             job_status = self._jobs[job_id]
-            self.transition_policy.validate(job_status, target_status)
+            self.job_transition_policy.validate(job_status, target_status)
             self._jobs[job_id] = JobStatus(
                 id=job_status.id,
                 status=target_status,

@@ -3,7 +3,6 @@ from llm_agent.di.registrars.auth import ProdAuthRegistrar
 from llm_agent.di.registrars.game_state import GameStateRegistrar
 from llm_agent.di.registrars.job_orchestration import JobOrchestrationRegistrar
 from llm_agent.di.registrars.throttle_step_service import ThrottleStepsServiceRegistrar
-from llm_agent.infrastructure.infra_setup.production import ProductionInfrastructureSetup
 
 
 def get_production_registrars() -> ApplicationDIConfig:
@@ -12,7 +11,8 @@ def get_production_registrars() -> ApplicationDIConfig:
     app_wide_registrars = ApplicationDIConfig(
         app_lifetime_registrars=app_lifetime_registrars,
         fastapi_lifespan_registrars=fastapi_lifespan_registrars,
-        infrastructure_bootstrapper=ProductionInfrastructureSetup(),
+        # TODO: tbd
+        infrastructure_registrars=[],
     )
 
     return app_wide_registrars

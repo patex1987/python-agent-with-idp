@@ -7,4 +7,4 @@ class CreatedJobV1Mapper:
 
     @classmethod
     def to_dto(cls, job_status: JobStatus) -> CreatedJobDto:
-        return CreatedJobDto(job_id=job_status.id)
+        return CreatedJobDto(id=job_status.id)

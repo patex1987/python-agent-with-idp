@@ -12,13 +12,25 @@ from llm_agent.domain.agent.jobs.event import JobEvent
 class JobIntakeStore(Protocol):
     async def create_job(self, job_request: JobRequest) -> JobStatus: ...
 
-    async def get_status(self, job_id: UUID) -> JobStatus: ...
+    async def get_status(self, job_id: UUID) -> JobStatus:
+        """
+
+        :param job_id:
+        :return:
+        :raise JobNotFoundError: when the job is not found in the store
+        """
+        ...
 
     async def mark_enqueued(self, job_id: UUID) -> None: ...
 
 
 class JobProcessingStore(Protocol):
     """
+    Job store interface for the processing / consumer side
+
+    - Only JobProcessingStore mutates RUNNING / TIMED_OUT / RETRYING
+    - Workers never set RUNNING directly, it can be set only as part
+        of the job claiming
 
     Notes: never expose publicly setting the state to running
     """

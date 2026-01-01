@@ -30,5 +30,12 @@ class BackendJobOrchestrationService:
         return created_job
 
     async def get_job(self, job_id: str) -> JobStatus:
+        """
+        Retrieve the job's status from the job store.
+
+        :param job_id:
+        :return: JobStatus
+        :raises: JobNotFoundError
+        """
         job_status = await self.job_store.get_status(job_id=uuid.UUID(job_id))
         return job_status

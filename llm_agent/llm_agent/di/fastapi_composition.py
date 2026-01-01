@@ -3,10 +3,15 @@ import os
 
 import fastapi
 import svcs
+from fastapi import FastAPI
 
+from agent_job_worker.in_memory.consumer import Consumer
 from llm_agent.app import create_app, register_middlewares
+from llm_agent.di.app_wide_registrar import ApplicationDIConfig
 from llm_agent.di.provider import RegistrarProvider
 from llm_agent.di.registry_builder import apply_registrars
+from llm_agent.domain.infrastructure_setup import InfrastructureSetup
+from llm_agent.infrastructure.infra_setup.local_dev import LocalDevInfrastructureSetup
 
 
 def compose_fastapi_app_with_registrars() -> fastapi.FastAPI:
@@ -54,8 +59,25 @@ def create_app_with_selected_di(
     app_scoped_container = svcs.Container(app_scoped_registry)
 
     app.state.fastapi_lifespan_registrars = app_registrars.fastapi_lifespan_registrars
-    app.state.infrastructure_setup = app_registrars.infrastructure_bootstrapper
+
+    infra_setup = build_infra_setup(app, app_registrars)
+    app.state.infrastructure_setup = infra_setup
 
     register_middlewares(app, app_scoped_container)
 
     return app
+
+
+def build_infra_setup(app: FastAPI, app_registrars: ApplicationDIConfig) -> InfrastructureSetup:
+    """
+    TODO: move this elsewhere
+    :param app:
+    :param app_registrars:
+    :return:
+    """
+    infrastructure_registry = svcs.Registry()
+    infra_registry = apply_registrars(app_registrars.infrastructure_registrars, infrastructure_registry)
+    infra_container = svcs.Container(infra_registry)
+    app.state.infrastructure_container = infra_container
+    infra_setup = LocalDevInfrastructureSetup(consumer=infra_container.get(Consumer))
+    return infra_setup

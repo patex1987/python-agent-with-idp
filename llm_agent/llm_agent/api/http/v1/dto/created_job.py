@@ -4,4 +4,4 @@ from pydantic import BaseModel
 
 
 class CreatedJobDto(BaseModel):
-    job_id: uuid.UUID
+    id: uuid.UUID

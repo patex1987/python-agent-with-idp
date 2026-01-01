@@ -1,15 +1,15 @@
 import svcs
 
 from llm_agent.di.registrars.base import Registrar
-from llm_agent.infrastructure.agent.in_memory.queue import InMemoryJobSignalQueue
 
 from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobIntakeStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
-from tests.fake_implementations.di.factories.job_related import (
+from tests.fake_implementations.llm_agent.di.factories.job_related import (
     InternalJobStorageProvider,
     InternalEventLogsProvider,
+    JobSignalQueueProvider,
 )
 
 
@@ -54,5 +54,5 @@ class InMemoryJobOrchestrationRegistrar(Registrar):
 
         So the worker can see inside the content in a single process setup.
         """
-        in_memory_job_queue = InMemoryJobSignalQueue()
+        in_memory_job_queue = JobSignalQueueProvider.get_instance()
         return in_memory_job_queue

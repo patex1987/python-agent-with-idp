@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from llm_agent.di.registrars.base import Registrar
-from llm_agent.domain.infrastructure_setup import InfrastructureSetup
 
 
 @dataclass
@@ -36,4 +35,4 @@ class ApplicationDIConfig:
 
     app_lifetime_registrars: Sequence[Registrar]
     fastapi_lifespan_registrars: Sequence[Registrar]
-    infrastructure_bootstrapper: InfrastructureSetup
+    infrastructure_registrars: Sequence[Registrar]

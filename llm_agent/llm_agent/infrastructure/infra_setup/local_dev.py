@@ -10,7 +10,7 @@ class LocalDevInfrastructureSetup(InfrastructureSetup):
     infrastructure setup for local development.
 
     Sets up things like:
-    - background message job consumer - for processing the load coming fro
+    - background message job consumer - for processing the load coming from
         the rest api
     """
 

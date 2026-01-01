@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from tests.fake_implementations.di.app_registrar_providers import get_development_registrars
+from tests.fake_implementations.llm_agent.di.app_registrar_providers import get_development_registrars
 from llm_agent.di.app_wide_registrar import ApplicationDIConfig
 from llm_agent.di.provider import RegistrarProvider
 from llm_agent.di.registrars.base import Registrar
@@ -36,15 +36,18 @@ class ComposableRegistrarProvider(RegistrarProvider):
         self,
         app_lifetime_registrars: Sequence[Registrar],
         fastapi_lifespan_registrars: Sequence[Registrar],
+        infrastructure_registrars: Sequence[Registrar],
     ):
         self.base_provider = get_development_registrars
-        self.app_lifetime_registrars = app_lifetime_registrars
-        self.fastapi_lifespan_registrars = fastapi_lifespan_registrars
+        self.app_lifetime_registrar_overrides = app_lifetime_registrars
+        self.fastapi_lifespan_registrar_overrides = fastapi_lifespan_registrars
+        self.infrastructure_registrar_overrides = infrastructure_registrars
 
     def __call__(self) -> ApplicationDIConfig:
         base_config = self.base_provider()
         return ApplicationDIConfig(
-            app_lifetime_registrars=self.app_lifetime_registrars + base_config.app_lifetime_registrars,
-            fastapi_lifespan_registrars=self.fastapi_lifespan_registrars + base_config.fastapi_lifespan_registrars,
-            infrastructure_bootstrapper=base_config.infrastructure_bootstrapper,
+            app_lifetime_registrars=base_config.app_lifetime_registrars + self.app_lifetime_registrar_overrides,
+            fastapi_lifespan_registrars=base_config.fastapi_lifespan_registrars
+            + self.fastapi_lifespan_registrar_overrides,
+            infrastructure_registrars=base_config.infrastructure_registrars + self.infrastructure_registrar_overrides,
         )
