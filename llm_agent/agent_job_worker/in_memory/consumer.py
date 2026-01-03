@@ -13,7 +13,12 @@ logger = structlog.get_logger(__name__)
 
 
 class Consumer(Protocol):
-    async def consume_and_execute_loop(self): ...
+    async def consume_and_execute_loop(self):
+        """
+        The main entrypoint / workhorse on the consumer side.
+        :return:
+        """
+        ...
 
     async def shutdown_execution(self): ...
 
@@ -36,19 +41,26 @@ class InMemoryConsumer(Consumer):
 
     async def consume_and_execute_loop(self):
         """
-        TODO: refactor into smaller unit. Use the following at least:
-            - consumer loop
-            - job executor
-            - execution policy
         TODO: implement the notifier and hook into relevant events
         TODO: add a concurrent health checker, so it's literally just
             checking if the worker is running
+        TODO: Missing graceful handling of shutting down claimed jobs
+            when shutting down the whole execution
         """
         while self._execution_allowed:
             await self.job_signal_queue.wait()
-            claimed_job = await self.job_store.claim_job(self.worker_id)
+            try:
+                claimed_job = await self.job_store.claim_job(self.worker_id)
+            except Exception as e:
+                logger.error(f"{self.worker_id}: failed to claim job", error=str(e))
+                claimed_job = None
+
             if not claimed_job:
                 continue
+
+            if not self._execution_allowed:
+                logger.info(f"{self.worker_id}: shutting down")
+                break
 
             logger.info(f"{self.worker_id}: claimed job", job_id=claimed_job.id)
             async with self.job_lease_scope_factory(
@@ -73,7 +85,13 @@ class InMemoryConsumer(Consumer):
             # await notifier.publish(JobEvent(job_id, "failed", {"error": str(e)}))
 
     async def shutdown_execution(self):
+        """
+        Gracefully shutdown the consumer.
+
+        Sends a notification signal that the consumption is over.
+        """
         self._execution_allowed = False
+        await self.job_signal_queue.notify()
 
 
 class JobLeaseScope:
@@ -111,8 +129,20 @@ class JobLeaseScope:
                 pass
 
     async def heartbeat_loop(self, job_id):
-        heartbeat_interval = 5  # seconds
-        while True:
-            await asyncio.sleep(heartbeat_interval)
-            logger.info(f"{self.worker_id}: heartbeat", job_id=job_id)
-            await self.job_store.heartbeat(job_id, self.worker_id)
+        """
+        TODO: job_store.heartbeat should return a state, and hearbeat_loop
+            should raise an error on incorrect heartbeats
+        :param job_id:
+        :return:
+        """
+        heartbeat_interval_seconds = 5  # seconds
+        while self._running:
+            await asyncio.sleep(heartbeat_interval_seconds)
+            if not self._running:
+                break
+            try:
+                await self.job_store.heartbeat(job_id, self.worker_id)
+                logger.info(f"{self.worker_id}: heartbeat", job_id=job_id)
+            except Exception as exc:
+                logger.error(f"{self.worker_id}: heartbeat failed", job_id=job_id, error=str(exc))
+

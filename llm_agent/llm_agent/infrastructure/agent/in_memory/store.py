@@ -13,6 +13,7 @@ from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.exception import JobNotFoundError
+from llm_agent.domain.agent.jobs.transition_request import TransitionRequestParams, get_value_or_fallback
 from llm_agent.services.agent.store import JobIntakeStore, JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
 
@@ -76,6 +77,8 @@ class InMemoryJobIntakeStore(JobIntakeStore):
 
 
 def has_claim_expired(job_status: JobStatus) -> bool:
+    if not job_status.claim_expiration_unix_ts:
+        return False
     current_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp()
     if current_unix_ts > job_status.claim_expiration_unix_ts:
         return True
@@ -109,33 +112,35 @@ class InMemoryJobProcessingStore(JobProcessingStore):
     async def claim_job(self, worker_id: str) -> ClaimedJob | None:
         """
         Querying is ineffective, but remember this is an in-memory POC
+
+        Needs to be atomic to handle concurrency on multiple workers
+
         :param worker_id:
         :return:
         """
-        for job_id, job_status in self._jobs.items():
-            if job_status.status == JobStatusCode.ENQUEUED:
-                expiration_unix_ts = await get_new_expiration_ts()
-                await self._transition(
-                    job_id, JobStatusCode.RUNNING, worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
-                )
-                logger.info(f"Job {job_id} claimed by {worker_id}")
-                return ClaimedJob(id=job_id, claim_type="enqueued", job_status=self._jobs[job_id])
+        async with self._lock:
+            for job_id, job_status in self._jobs.items():
+                if job_status.status != JobStatusCode.RUNNING:
+                    continue
+                claim_expired = has_claim_expired(job_status)
+                if not claim_expired:
+                    continue
+                logger.info(f"Job claim on {job_id} expired, retrying")
+                await self.recover_expired_jobs(job_id, job_status, worker_id)
 
-            if job_status.status != JobStatusCode.RUNNING:
-                continue
-            claim_expired = has_claim_expired(job_status)
-            if claim_expired:
-                logger.info(f"Job {job_id} expired, originally assigned to {job_status.claimed_worker}")
-                await self._transition(job_id, JobStatusCode.TIMED_OUT, worker_id=None)
-                await self._transition(job_id, JobStatusCode.RETRYING)
-                await self._transition(job_id, JobStatusCode.ENQUEUED)
-                await self._transition(job_id, JobStatusCode.RUNNING, worker_id=worker_id)
-                expiration_unix_ts = await get_new_expiration_ts()
-                await self._transition(
-                    job_id, JobStatusCode.RUNNING, worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
-                )
-                return ClaimedJob(id=job_id, claim_type="recovered", job_status=self._jobs[job_id])
-        return None
+            for job_id, job_status in self._jobs.items():
+                if job_status.status == JobStatusCode.ENQUEUED:
+                    expiration_unix_ts = await get_new_expiration_ts()
+                    transition_request = TransitionRequestParams(
+                        worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
+                    )
+                    await self._transition_locked(
+                        job_id, JobStatusCode.RUNNING, transition_request=transition_request
+                    )
+                    logger.info(f"Job {job_id} claimed by {worker_id}")
+                    return ClaimedJob(id=job_id, claim_type="enqueued", job_status=self._jobs[job_id])
+
+            return None
 
     async def append_event(self, evt: JobEvent) -> None: ...
 
@@ -162,31 +167,56 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             return None
 
     async def set_failed(self, job_id: UUID, error: str) -> None:
-        await self._transition(job_id, JobStatusCode.FAILED, error=error)
+        async with self._lock:
+            transition_request = TransitionRequestParams(error=error)
+            await self._transition_locked(job_id, JobStatusCode.FAILED, transition_request=transition_request)
 
     async def set_succeeded(self, job_id: UUID, result: dict) -> None:
-        await self._transition(job_id, JobStatusCode.SUCCEEDED, result=result)
+        async with self._lock:
+            transition_request = TransitionRequestParams(result=result)
+            await self._transition_locked(job_id, JobStatusCode.SUCCEEDED, transition_request=transition_request)
 
-    async def _transition(
+    async def _transition_locked(
         self,
         job_id: UUID,
         target_status: JobStatusCode,
         *,
-        result: dict[str, Any] | None = None,
-        error: str | None = None,
-        worker_id: str | None = None,
-        updated_retry_count: int | None = None,
-        expiration_unix_ts: int | float | None = None,
+        transition_request: TransitionRequestParams | None = None,
     ):
-        async with self._lock:
-            job_status = self._jobs[job_id]
-            self.job_transition_policy.validate(job_status, target_status)
-            self._jobs[job_id] = JobStatus(
-                id=job_status.id,
-                status=target_status,
-                result=result or job_status.result,
-                error=error or job_status.error,
-                claimed_worker=worker_id or job_status.claimed_worker,
-                claim_expiration_unix_ts=expiration_unix_ts or job_status.claim_expiration_unix_ts,
-                retry_count=updated_retry_count or job_status.retry_count,
-            )
+        """
+        Transition the job to the desired state.
+
+        Expects that a lock is held over the given entity.
+        :param job_id:
+        :param target_status:
+        :param transition_request:
+        :return:
+        """
+        job_status = self._jobs[job_id]
+        if not transition_request:
+            transition_request = TransitionRequestParams()
+
+        self.job_transition_policy.validate(job_status, target_status)
+
+        result = get_value_or_fallback(transition_request.result, job_status.result)
+        error = get_value_or_fallback(transition_request.error, job_status.error)
+        worker_id = get_value_or_fallback(transition_request.worker_id, job_status.claimed_worker)
+        claim_expiration_unix_ts = get_value_or_fallback(transition_request.expiration_unix_ts, job_status.claim_expiration_unix_ts)
+        retry_count = get_value_or_fallback(transition_request.retry_count, job_status.retry_count)
+
+        self._jobs[job_id] = JobStatus(
+            id=job_status.id,
+            status=target_status,
+            result=result,
+            error=error,
+            claimed_worker=worker_id,
+            claim_expiration_unix_ts=claim_expiration_unix_ts,
+            retry_count=retry_count,
+        )
+
+    async def recover_expired_jobs(self, job_id, job_status, worker_id):
+        logger.info(f"Job {job_id} expired, originally assigned to {job_status.claimed_worker}")
+        transition_request = TransitionRequestParams(worker_id=worker_id)
+        await self._transition_locked(job_id, JobStatusCode.TIMED_OUT, transition_request=transition_request)
+        await self._transition_locked(job_id, JobStatusCode.RETRYING, transition_request=transition_request)
+        await self._transition_locked(job_id, JobStatusCode.ENQUEUED, transition_request=transition_request)

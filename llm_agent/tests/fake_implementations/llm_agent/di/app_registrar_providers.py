@@ -1,4 +1,4 @@
-from tests.fake_implementations.agent_job_worker.di import ConsumerRegistrar
+from tests.fake_implementations.agent_job_worker.di.registrars.consumer import ConsumerRegistrar
 from tests.fake_implementations.llm_agent.di.registrars.auth import DevelopmentAuthRegistrar
 from llm_agent.di.app_wide_registrar import ApplicationDIConfig
 from llm_agent.di.registrars.game_state import GameStateRegistrar
