@@ -39,3 +39,18 @@ class BackendJobOrchestrationService:
         """
         job_status = await self.job_store.get_status(job_id=uuid.UUID(job_id))
         return job_status
+
+    async def cancel_job(self, job_id: str) -> bool:
+        """
+        Mark the job as canceled, notify the workers when the job state needs transition.
+
+        :param job_id:
+        :return:
+        TODO: return proper domain objects instead of bool if needed
+        """
+        job_uuid = uuid.UUID(job_id)
+        is_cancelled = await self.job_store.mark_cancelled(job_id=job_uuid)
+        if is_cancelled:
+            await self.job_signal_queue.notify()
+
+        return is_cancelled

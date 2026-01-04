@@ -2,14 +2,14 @@ import asyncio
 import datetime
 import uuid
 from collections import deque
-from typing import Any
 from uuid import UUID
 
 import structlog
 
+from agent_job_worker.domain.exception import JobLeaseLostError
 from llm_agent.domain.agent.jobs.claim import ClaimedJob
 from llm_agent.domain.agent.jobs.request import JobRequest
-from llm_agent.domain.agent.jobs.status_code import JobStatusCode
+from llm_agent.domain.agent.jobs.status_code import JobStatusCode, TERMINAL_JOB_STATUSES
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.exception import JobNotFoundError
@@ -75,6 +75,30 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 error=job_status.error,
             )
 
+    async def mark_cancelled(self, job_id: UUID) -> bool:
+        """
+
+        :param job_id:
+        :return:
+        :raises: JobNotFoundError
+        """
+        async with self._lock:
+            if job_id not in self._jobs:
+                raise JobNotFoundError(job_id=str(job_id))
+            job_status = self._jobs[job_id]
+            if job_status.status in TERMINAL_JOB_STATUSES:
+                return False
+
+            self.job_transition_policy.validate(job_status, JobStatusCode.CANCELLED)
+
+            self._jobs[job_id] = JobStatus(
+                id=job_status.id,
+                status=JobStatusCode.CANCELLED,
+                result=job_status.result,
+                error=job_status.error,
+            )
+            return True
+
 
 def has_claim_expired(job_status: JobStatus) -> bool:
     if not job_status.claim_expiration_unix_ts:
@@ -134,9 +158,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                     transition_request = TransitionRequestParams(
                         worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
                     )
-                    await self._transition_locked(
-                        job_id, JobStatusCode.RUNNING, transition_request=transition_request
-                    )
+                    await self._transition_locked(job_id, JobStatusCode.RUNNING, transition_request=transition_request)
                     logger.info(f"Job {job_id} claimed by {worker_id}")
                     return ClaimedJob(id=job_id, claim_type="enqueued", job_status=self._jobs[job_id])
 
@@ -144,14 +166,26 @@ class InMemoryJobProcessingStore(JobProcessingStore):
 
     async def append_event(self, evt: JobEvent) -> None: ...
 
-    async def heartbeat(self, job_id: UUID, worker_id: str) -> None:
+    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatusCode:
+        """
+        Extend the expiration time of a running job claimed by a given worker.
+
+        :param job_id:
+        :param worker_id:
+        :return:
+        :raises: JobLeaseLostError - when the job is claimed by a different worker
+        """
         async with self._lock:
             job_status = self._jobs[job_id]
+
+            if job_status.status == JobStatusCode.CANCELLED:
+                return JobStatusCode.CANCELLED
+
             if job_status.status != JobStatusCode.RUNNING:
-                return None
+                return job_status.status
 
             if job_status.claimed_worker != worker_id:
-                return None
+                raise JobLeaseLostError(f"Job {job_id} is not claimed by {worker_id}")
 
             updated_expiration_unix_ts = await get_new_expiration_ts()
 
@@ -164,7 +198,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                 claim_expiration_unix_ts=updated_expiration_unix_ts,
                 retry_count=job_status.retry_count,
             )
-            return None
+            return JobStatusCode.RUNNING
 
     async def set_failed(self, job_id: UUID, error: str) -> None:
         async with self._lock:
@@ -201,7 +235,9 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         result = get_value_or_fallback(transition_request.result, job_status.result)
         error = get_value_or_fallback(transition_request.error, job_status.error)
         worker_id = get_value_or_fallback(transition_request.worker_id, job_status.claimed_worker)
-        claim_expiration_unix_ts = get_value_or_fallback(transition_request.expiration_unix_ts, job_status.claim_expiration_unix_ts)
+        claim_expiration_unix_ts = get_value_or_fallback(
+            transition_request.expiration_unix_ts, job_status.claim_expiration_unix_ts
+        )
         retry_count = get_value_or_fallback(transition_request.retry_count, job_status.retry_count)
 
         self._jobs[job_id] = JobStatus(
@@ -218,5 +254,6 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         logger.info(f"Job {job_id} expired, originally assigned to {job_status.claimed_worker}")
         transition_request = TransitionRequestParams(worker_id=worker_id)
         await self._transition_locked(job_id, JobStatusCode.TIMED_OUT, transition_request=transition_request)
-        await self._transition_locked(job_id, JobStatusCode.RETRYING, transition_request=transition_request)
+        updated_retry = TransitionRequestParams(worker_id=worker_id, retry_count=job_status.retry_count + 1)
+        await self._transition_locked(job_id, JobStatusCode.RETRYING, transition_request=updated_retry)
         await self._transition_locked(job_id, JobStatusCode.ENQUEUED, transition_request=transition_request)

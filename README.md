@@ -491,6 +491,26 @@ Authentication: Bearer token (JWT) in `Authorization` header
 Example subscription script:
 `testing_payloads/gql_websocket.py`
 
+### Agent Jobs and Cancellation
+
+The service supports asynchronous agent job execution with graceful cancellation:
+
+**Job Management Endpoints:**
+- `POST /api/v1/agent/create-job` - Create a new agent job
+- `GET /api/v1/agent/get-job-status/{job_id}` - Check job status
+- `POST /api/v1/agent/jobs/{job_id}/cancel` - Cancel a running job
+
+**Cancellation Behavior:**
+- **Checkpoint-based stopping**: Jobs stop gracefully after completing the current step/operation, ensuring atomic operations and preventing partial state
+- **Heartbeat detection**: Cancellation is detected via periodic heartbeats (default: 5-second intervals)
+- **Latency**: Cancellation is not immediate - there can be up to the heartbeat interval delay before detection, plus the time remaining in the current execution step
+- **Safety**: This approach ensures operations complete atomically and prevents data corruption
+
+**Job Status Codes:**
+- `CREATED` → `ENQUEUED` → `RUNNING` → `SUCCEEDED` / `FAILED` / `CANCELLED` / `TIMED_OUT`
+- Jobs can be cancelled from `CREATED`, `ENQUEUED`, or `RUNNING` states
+- Once a job reaches a terminal state (`SUCCEEDED`, `FAILED`, `CANCELLED`), it cannot be cancelled
+
 ---
 
 ## 9. Logging

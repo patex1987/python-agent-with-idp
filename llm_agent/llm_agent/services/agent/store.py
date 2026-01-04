@@ -7,6 +7,7 @@ from llm_agent.domain.agent.jobs.claim import ClaimedJob
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
+from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 
 
 class JobIntakeStore(Protocol):
@@ -22,6 +23,14 @@ class JobIntakeStore(Protocol):
         ...
 
     async def mark_enqueued(self, job_id: UUID) -> None: ...
+
+    async def mark_cancelled(self, job_id: UUID) -> bool:
+        """
+        Mark job as canceled.
+
+        Returns True if state was changed, False if already terminal.
+        """
+        ...
 
 
 class JobProcessingStore(Protocol):
@@ -43,4 +52,13 @@ class JobProcessingStore(Protocol):
 
     async def append_event(self, evt: JobEvent) -> None: ...
 
-    async def heartbeat(self, job_id: UUID, worker_id: str) -> None: ...
+    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatusCode:
+        """
+        Extend the expiration time of a running job claimed by a given worker.
+
+        :param job_id:
+        :param worker_id:
+        :return:
+        :raises: JobLeaseLostError - when the job is claimed by a different worker
+        """
+        ...

@@ -30,6 +30,8 @@ class JobStatusCode(Enum):
         Terminal
         User/system decision
         No retry unless explicitly requeued
+        This does not mean execution has stopped.
+        It means execution is no longer allowed to make progress.
     TIMED_OUT
         Terminal (or transitional to RETRYING)
         Worker lost lease
@@ -45,8 +47,6 @@ class JobStatusCode(Enum):
     RUNNING    → TIMED_OUT
     TIMED_OUT  → RETRYING
     RETRYING   → ENQUEUED
-
-    TODO: CANCELLATION NOT SUPPORTED YET
     """
 
     CREATED = 1
@@ -57,3 +57,6 @@ class JobStatusCode(Enum):
     CANCELLED = 6
     TIMED_OUT = 7
     RETRYING = 8
+
+
+TERMINAL_JOB_STATUSES = {JobStatusCode.SUCCEEDED, JobStatusCode.FAILED, JobStatusCode.CANCELLED}

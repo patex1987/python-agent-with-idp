@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from llm_agent.api.http.v1.dto.agent_prompt import AgentPromptDto
+from llm_agent.api.http.v1.dto.cancelled_job import CancelJobResponseDto
 from llm_agent.api.http.v1.dto.created_job import CreatedJobDto
 from llm_agent.api.http.v1.mappers.created_job import CreatedJobV1Mapper
 from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
@@ -70,5 +71,68 @@ async def get_agent_job_status(
     try:
         job_status = await job_service.get_job(job_id)
         return JobExecutionStatusDto(status=job_status.status.name)
+    except JobNotFoundError as exc:
+        raise fastapi.HTTPException(status_code=404, detail=str(exc))
+
+
+@agent_router.post(
+    "/jobs/{job_id}/cancel",
+    response_model=CancelJobResponseDto,
+    summary="Cancel a running agent job",
+    description=(
+        "Requests cancellation of a job. The job will be marked as CANCELLED "
+        "in the store. If a worker is executing the job, it will discover "
+        "the cancellation at the next checkpoint and exit cooperatively.\n\n"
+        "Important: Termination is not immediate. There are two sources of delay:\n"
+        "1. Detection delay: Up to the heartbeat interval (default: 5 seconds) before "
+        "the worker detects the cancellation signal\n"
+        "2. Checkpoint delay: The worker will complete the current step/operation "
+        "before stopping execution\n\n"
+        "This checkpoint-based approach ensures operations complete atomically and "
+        "prevents partial state or data corruption. Execution stops gracefully after "
+        "finishing the next checkpoint, not in the middle of an operation."
+    ),
+    responses={
+        200: {
+            "description": "Cancellation requested or job already terminal",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "cancelled": {
+                            "value": {"job_id": "...", "status": "cancelled", "message": "Job cancellation requested"}
+                        },
+                        "already_terminal": {
+                            "value": {
+                                "job_id": "...",
+                                "status": "already_terminal",
+                                "message": "Job already in terminal state",
+                            }
+                        },
+                    }
+                }
+            },
+        },
+        404: {"description": "Job not found"},
+    },
+)
+async def cancel_agent_job(
+    job_id: str,
+    request: fastapi.Request,
+    job_service: BackendJobOrchestrationService = fastapi.Depends(get_job_service),
+):
+    try:
+        was_cancelled = await job_service.cancel_job(job_id)
+        if was_cancelled:
+            return CancelJobResponseDto(
+                job_id=job_id,
+                status="cancelled",
+                message="Job cancellation requested",
+            )
+        else:
+            return CancelJobResponseDto(
+                job_id=job_id,
+                status="already_terminal",
+                message="Job already in terminal state",
+            )
     except JobNotFoundError as exc:
         raise fastapi.HTTPException(status_code=404, detail=str(exc))
