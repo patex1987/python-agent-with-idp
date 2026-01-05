@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import uuid
 from collections import deque
 from uuid import UUID
 
@@ -8,110 +7,15 @@ import structlog
 
 from agent_job_worker.domain.exception import JobLeaseLostError
 from llm_agent.domain.agent.jobs.claim import ClaimedJob
-from llm_agent.domain.agent.jobs.request import JobRequest
-from llm_agent.domain.agent.jobs.status_code import JobStatusCode, TERMINAL_JOB_STATUSES
-from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.exception import JobNotFoundError
+from llm_agent.domain.agent.jobs.status import JobStatus
+from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.domain.agent.jobs.transition_request import TransitionRequestParams, get_value_or_fallback
-from llm_agent.services.agent.store import JobIntakeStore, JobProcessingStore
+from llm_agent.services.agent.store import JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
 
-
 logger = structlog.getLogger(__name__)
-
-
-class InMemoryJobIntakeStore(JobIntakeStore):
-    def __init__(
-        self,
-        internal_job_storage: dict[UUID, JobStatus],
-        internal_event_logs: dict[UUID, deque[JobEvent]],
-        job_transition_policy: JobTransitionPolicy,
-    ):
-        """
-
-        :param internal_job_storage: injectable from the outside, i.e. possible
-            to share with the worker
-        :param internal_event_logs: something like transactional logs for
-            events (append only)
-        """
-        self._jobs = internal_job_storage
-        self._events = internal_event_logs
-        self._lock = asyncio.Lock()
-        self.job_transition_policy = job_transition_policy
-
-    async def create_job(self, job_request: JobRequest) -> JobStatus:
-        """
-
-        :param job_request:
-        :return:
-        """
-        async with self._lock:
-            job_id = uuid.uuid4()
-            job_status = JobStatus(
-                id=job_id,
-                status=JobStatusCode.CREATED,
-                result=None,
-                error=None,
-            )
-            self._jobs[job_id] = job_status
-            self._events[job_id] = deque()
-            return job_status
-
-    async def get_status(self, job_id: UUID) -> JobStatus:
-        if job_id not in self._jobs:
-            raise JobNotFoundError(job_id=str(job_id))
-        return self._jobs[job_id]
-
-    async def mark_enqueued(self, job_id: UUID) -> None:
-        async with self._lock:
-            job_status = self._jobs[job_id]
-            self.job_transition_policy.validate(job_status, JobStatusCode.ENQUEUED)
-
-            self._jobs[job_id] = JobStatus(
-                id=job_status.id,
-                status=JobStatusCode.ENQUEUED,
-                result=job_status.result,
-                error=job_status.error,
-            )
-
-    async def mark_cancelled(self, job_id: UUID) -> bool:
-        """
-
-        :param job_id:
-        :return:
-        :raises: JobNotFoundError
-        """
-        async with self._lock:
-            if job_id not in self._jobs:
-                raise JobNotFoundError(job_id=str(job_id))
-            job_status = self._jobs[job_id]
-            if job_status.status in TERMINAL_JOB_STATUSES:
-                return False
-
-            self.job_transition_policy.validate(job_status, JobStatusCode.CANCELLED)
-
-            self._jobs[job_id] = JobStatus(
-                id=job_status.id,
-                status=JobStatusCode.CANCELLED,
-                result=job_status.result,
-                error=job_status.error,
-            )
-            return True
-
-
-def has_claim_expired(job_status: JobStatus) -> bool:
-    if not job_status.claim_expiration_unix_ts:
-        return False
-    current_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp()
-    if current_unix_ts > job_status.claim_expiration_unix_ts:
-        return True
-    return False
-
-
-async def get_new_expiration_ts() -> float:
-    expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
-    return expiration_unix_ts
 
 
 class InMemoryJobProcessingStore(JobProcessingStore):
@@ -276,3 +180,17 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             claim_expiration_unix_ts=claim_expiration_unix_ts,
             retry_count=retry_count,
         )
+
+
+def has_claim_expired(job_status: JobStatus) -> bool:
+    if not job_status.claim_expiration_unix_ts:
+        return False
+    current_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp()
+    if current_unix_ts > job_status.claim_expiration_unix_ts:
+        return True
+    return False
+
+
+async def get_new_expiration_ts() -> float:
+    expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
+    return expiration_unix_ts

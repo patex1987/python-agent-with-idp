@@ -32,7 +32,7 @@ class InMemoryJobOrchestrationRegistrar(Registrar):
 
         So the worker can see inside the content in a single process setup.
         """
-        from llm_agent.infrastructure.agent.in_memory.store import InMemoryJobIntakeStore
+        from local_runtime.job_store.intake import InMemoryJobIntakeStore
 
         internal_job_storage = self._shared_local_infrastructure.internal_job_storage
         internal_event_logs = self._shared_local_infrastructure.internal_event_logs

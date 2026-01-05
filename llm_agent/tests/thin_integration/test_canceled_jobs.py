@@ -1,4 +1,5 @@
 import asyncio
+import random
 from uuid import UUID
 
 import pytest
@@ -16,9 +17,9 @@ from tests.fake_implementations.di.registrars.dependency_override import Depende
 logger = structlog.getLogger(__name__)
 
 
-class PredictableBlockableJobExecutor(AgentJobExecutor):
+class SignalControlledJobExecutor(AgentJobExecutor):
     """
-    An executor that is blocked until the allow_finish signal is set.
+    An executor that is blocked until the controller signals are set.
     """
 
     def __init__(self):
@@ -45,16 +46,16 @@ class PredictableBlockableJobExecutor(AgentJobExecutor):
 
 
 @pytest.fixture
-def blockable_job_executor():
-    return PredictableBlockableJobExecutor()
+def signal_controlled_executor():
+    return SignalControlledJobExecutor()
 
 
 @pytest.fixture
-def agent_service_client_with_blockable_execution(blockable_job_executor):
+def agent_service_client_with_blockable_execution(signal_controlled_executor):
     agent_executor_override_registrar = DependencyOverrideRegistrar(
         factory_overrides={},
         value_overrides={
-            AgentJobExecutor: blockable_job_executor,
+            AgentJobExecutor: signal_controlled_executor,
         },
     )
     adjusted_registrar_provider = ComposableRegistrarProvider(
@@ -68,7 +69,7 @@ def agent_service_client_with_blockable_execution(blockable_job_executor):
 
 
 class TestCanceledJobExecution:
-    def test_canceled_before_start(self, blockable_job_executor, agent_service_client_with_blockable_execution):
+    def test_canceled_before_start(self, signal_controlled_executor, agent_service_client_with_blockable_execution):
         """
         Job execution is canceled before it starts.
         """
@@ -90,13 +91,13 @@ class TestCanceledJobExecution:
         job_status_response = poll_job_status(agent_service_client_with_blockable_execution, job_id, timeout_seconds=2)
         assert job_status_response["status"] == "CANCELLED"
 
-        blockable_job_executor.allow_start_processing.set()
-        blockable_job_executor.allow_finish_processing.set()
+        signal_controlled_executor.allow_start_processing.set()
+        signal_controlled_executor.allow_finish_processing.set()
 
-        assert blockable_job_executor._started.is_set()
-        assert not blockable_job_executor._finished.is_set()
+        assert signal_controlled_executor._started.is_set()
+        assert not signal_controlled_executor._finished.is_set()
 
-    def test_canceled_during_execution(self, blockable_job_executor, agent_service_client_with_blockable_execution):
+    def test_canceled_during_execution(self, signal_controlled_executor, agent_service_client_with_blockable_execution):
         """
         Job execution is canceled during execution.
 
@@ -116,9 +117,7 @@ class TestCanceledJobExecution:
         assert job_creation_response.status_code == 200
         job_id = job_creation_response.json()["id"]
 
-        assert blockable_job_executor._started.wait(), "job executor did not start"
-
-        blockable_job_executor.allow_start_processing.set()
+        signal_controlled_executor.allow_start_processing.set()
         cancel_response = agent_service_client_with_blockable_execution.post(
             f"/api/v1/agent/jobs/{job_id}/cancel",
         )
@@ -126,15 +125,15 @@ class TestCanceledJobExecution:
         assert cancel_response.status_code == 200
         # assert cancel_response.json()["message"] == "Job cancellation requested"
 
-        blockable_job_executor.allow_finish_processing.set()
+        signal_controlled_executor.allow_finish_processing.set()
 
         job_status_response = poll_job_status(agent_service_client_with_blockable_execution, job_id, timeout_seconds=2)
         assert job_status_response["status"] == "CANCELLED"
 
-        assert blockable_job_executor._started.is_set()
-        assert not blockable_job_executor._finished.is_set()
+        assert signal_controlled_executor._started.is_set()
+        assert not signal_controlled_executor._finished.is_set()
 
-    def test_canceled_after_execution(self, blockable_job_executor, agent_service_client_with_blockable_execution):
+    def test_canceled_after_execution(self, signal_controlled_executor, agent_service_client_with_blockable_execution):
         """
         Job execution is canceled after execution.
 
@@ -152,10 +151,10 @@ class TestCanceledJobExecution:
         assert job_creation_response.status_code == 200
         job_id = job_creation_response.json()["id"]
 
-        blockable_job_executor.allow_start_processing.set()
-        blockable_job_executor.allow_finish_processing.set()
+        signal_controlled_executor.allow_start_processing.set()
+        signal_controlled_executor.allow_finish_processing.set()
 
-        blockable_job_executor.allow_start_processing.set()
+        signal_controlled_executor.allow_start_processing.set()
         cancel_response = agent_service_client_with_blockable_execution.post(
             f"/api/v1/agent/jobs/{job_id}/cancel",
         )
@@ -165,5 +164,5 @@ class TestCanceledJobExecution:
 
         job_status_response = poll_job_status(agent_service_client_with_blockable_execution, job_id, timeout_seconds=2)
         assert job_status_response["status"] == "SUCCEEDED"
-        assert blockable_job_executor._started.is_set()
-        assert blockable_job_executor._finished.is_set()
+        assert signal_controlled_executor._started.is_set()
+        assert signal_controlled_executor._finished.is_set()

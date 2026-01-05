@@ -5,7 +5,7 @@ import svcs
 from agent_job_worker.in_memory.consumer import Consumer, InMemoryConsumer
 from agent_job_worker.in_memory.job_executor import AgentJobExecutor, RandomSleepJobExecutor
 from llm_agent.di.registrars.base import Registrar
-from llm_agent.infrastructure.agent.in_memory.store import InMemoryJobProcessingStore
+from local_runtime.job_store.processing import InMemoryJobProcessingStore
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
@@ -45,5 +45,5 @@ class ConsumerRegistrar(Registrar):
             job_signal_queue=svcs_container.get(JobSignalQueue),
             worker_id=worker_id,
             job_executor=svcs_container.get(AgentJobExecutor),
-            heartbeat_interval_seconds=2,
+            heartbeat_interval_seconds=5,
         )

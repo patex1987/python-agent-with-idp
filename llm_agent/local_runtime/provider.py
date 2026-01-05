@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.status import JobStatus
-from llm_agent.infrastructure.agent.in_memory.queue import InMemoryJobSignalQueue
+from local_runtime.job_signal_queue.queue import InMemoryJobSignalQueue
 
 
 @dataclass
@@ -21,7 +21,7 @@ class InMemoryRuntime:
     job_signal_queue: InMemoryJobSignalQueue
 
 
-def create_default_local_shared_infrastructure() -> InMemoryRuntime:
+def create_default_in_memory_runtime() -> InMemoryRuntime:
     return InMemoryRuntime(
         internal_job_storage={},
         internal_event_logs={},
