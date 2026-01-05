@@ -506,6 +506,108 @@ The service supports asynchronous agent job execution with graceful cancellation
 - **Latency**: Cancellation is not immediate - there can be up to the heartbeat interval delay before detection, plus the time remaining in the current execution step
 - **Safety**: This approach ensures operations complete atomically and prevents data corruption
 
+**Job Cancellation Flow (Store-Driven Cancellation via `/cancel` endpoint):**
+
+```mermaid
+flowchart TB
+    Client[Client] -->|POST /api/v1/agent/jobs/job_id/cancel| API[FastAPI Route Handler<br/>cancel_agent_job]
+    
+    API -->|calls| Service[BackendJobOrchestrationService<br/>cancel_job]
+    
+    Service -->|calls| Store{Job Store<br/>mark_cancelled}
+    
+    Store -->|check| Terminal{Job already<br/>terminal?}
+    Terminal -->|Yes| Return1[Return False<br/>Already terminal]
+    Terminal -->|No| Update[Mark job as<br/>CANCELLED in store]
+    
+    Update -->|if successful| Queue[JobSignalQueue<br/>notify workers]
+    Update --> Return2[Return True<br/>Cancellation requested]
+    
+    Return1 --> Response[Return HTTP 200<br/>already_terminal status]
+    Return2 --> Response2[Return HTTP 200<br/>cancelled status]
+    
+    Queue -.->|wakes up| Worker[Worker Consumer Loop]
+    
+    Worker -->|executing job| Heartbeat[Heartbeat Loop<br/>runs every 5s]
+    
+    Heartbeat -->|calls| HeartbeatCheck[Job Store<br/>heartbeat]
+    
+    HeartbeatCheck -->|checks| Status{Job status<br/>CANCELLED?}
+    Status -->|No| Continue[Return RUNNING<br/>renew lease]
+    Status -->|Yes| Detect[Return CANCELLED<br/>status]
+    
+    Continue -->|wait 5s| Heartbeat
+    
+    Detect -->|detected| CancelCtx[Cancel Execution Context<br/>ctx.cancel]
+    
+    CancelCtx --> Executor[Job Executor]
+    
+    Executor -->|checks at checkpoint| Checkpoint{ctx.is_cancelled<br/>checkpoint?}
+    
+    Checkpoint -->|No| Step[Execute Current Step<br/>Complete operation]
+    Step -->|after step| Checkpoint
+    
+    Checkpoint -->|Yes| Stop[Return Gracefully<br/>Stop execution]
+    
+    Stop --> Cleanup[Worker: Log cancellation<br/>Do NOT mark as succeeded]
+    
+    Cleanup --> Final[Job remains CANCELLED<br/>in store - terminal state]
+    
+    style Client fill:#e1f5ff
+    style API fill:#fff3e0
+    style Service fill:#fff3e0
+    style Store fill:#f3e5f5
+    style Worker fill:#e8f5e9
+    style Heartbeat fill:#e8f5e9
+    style Executor fill:#e8f5e9
+    style Update fill:#ffebee
+    style Detect fill:#ffebee
+    style Final fill:#ffebee
+```
+
+**Flow Explanation:**
+
+1. **REST API (Backend)**:
+   - Client sends cancellation request to `/cancel` endpoint
+   - Route handler delegates to `BackendJobOrchestrationService.cancel_job()`
+   - Service calls `job_store.mark_cancelled()` to update job status to `CANCELLED`
+   - If job is already terminal, returns `False`; otherwise returns `True` after marking as cancelled
+   - On successful cancellation, sends notification via `JobSignalQueue` to wake up any waiting workers
+   - Returns HTTP 200 response indicating cancellation status
+
+2. **Worker (Background)**:
+   - Worker runs a heartbeat loop (every 5 seconds) while executing jobs
+   - Each heartbeat calls `job_store.heartbeat()` which checks if job status is `CANCELLED`
+   - When `CANCELLED` status is detected, heartbeat loop calls `job_execution_ctx.cancel()`
+   - This sets a cancellation event flag in the execution context
+
+3. **Job Executor**:
+   - Executor checks `job_execution_ctx.is_cancelled()` at checkpoints (between steps)
+   - If cancellation detected, executor completes the current step fully, then returns gracefully
+   - This ensures atomic operations - jobs never stop mid-step, preventing partial state
+
+4. **Completion**:
+   - After executor returns, worker checks if cancellation occurred
+   - If cancelled, worker logs the cancellation but does NOT mark job as succeeded
+   - Job remains in `CANCELLED` state (terminal, no retries)
+
+**Two Cancellation Paths:**
+
+1. **Store-driven cancellation** (explicit cancellation):
+   - Triggered via `POST /api/v1/agent/jobs/{job_id}/cancel` endpoint
+   - Marks the job as `CANCELLED` in the store immediately
+   - Worker detects cancellation at next heartbeat and stops execution at next checkpoint
+   - Job transitions to terminal `CANCELLED` state (no retries)
+
+2. **Worker shutdown cancellation**:
+   - Triggered when a worker gracefully shuts down (e.g., during deployment, scaling down)
+   - Only cancels the execution context (stops the executor from continuing)
+   - **Does NOT** mark the job as `CANCELLED` in the store
+   - Job remains `RUNNING` until its lease expires (default: 30 seconds)
+   - Lease expiration triggers automatic recovery: `TIMED_OUT` → `RETRYING` → `ENQUEUED`
+   - Job can then be picked up and retried by another worker
+   - This design ensures worker shutdowns don't permanently cancel jobs, allowing for automatic recovery and retry
+
 **Job Status Codes:**
 - `CREATED` → `ENQUEUED` → `RUNNING` → `SUCCEEDED` / `FAILED` / `CANCELLED` / `TIMED_OUT`
 - Jobs can be cancelled from `CREATED`, `ENQUEUED`, or `RUNNING` states

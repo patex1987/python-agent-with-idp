@@ -210,6 +210,33 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             transition_request = TransitionRequestParams(result=result)
             await self._transition_locked(job_id, JobStatusCode.SUCCEEDED, transition_request=transition_request)
 
+    async def get_status(self, job_id: UUID) -> JobStatus:
+        async with self._lock:
+            if job_id not in self._jobs:
+                raise JobNotFoundError(job_id=str(job_id))
+            return self._jobs[job_id]
+
+    async def recover_expired_jobs(self, job_id, job_status, worker_id):
+        """
+        Recover a job whose lease has expired.
+
+        This handles two scenarios:
+        1. Normal lease expiration (worker crashed, network issue, etc.)
+        2. Worker shutdown (worker gracefully shuts down, stops heartbeating, lease expires)
+
+        Recovery flow: TIMED_OUT → RETRYING → ENQUEUED
+        This allows the job to be picked up by another worker.
+
+        Note: This is different from explicit cancellation (mark_cancelled),
+        which transitions to CANCELLED status and does not allow retries.
+        """
+        logger.info(f"Job {job_id} expired, originally assigned to {job_status.claimed_worker}")
+        transition_request = TransitionRequestParams(worker_id=worker_id)
+        await self._transition_locked(job_id, JobStatusCode.TIMED_OUT, transition_request=transition_request)
+        updated_retry = TransitionRequestParams(worker_id=worker_id, retry_count=job_status.retry_count + 1)
+        await self._transition_locked(job_id, JobStatusCode.RETRYING, transition_request=updated_retry)
+        await self._transition_locked(job_id, JobStatusCode.ENQUEUED, transition_request=transition_request)
+
     async def _transition_locked(
         self,
         job_id: UUID,
@@ -249,11 +276,3 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             claim_expiration_unix_ts=claim_expiration_unix_ts,
             retry_count=retry_count,
         )
-
-    async def recover_expired_jobs(self, job_id, job_status, worker_id):
-        logger.info(f"Job {job_id} expired, originally assigned to {job_status.claimed_worker}")
-        transition_request = TransitionRequestParams(worker_id=worker_id)
-        await self._transition_locked(job_id, JobStatusCode.TIMED_OUT, transition_request=transition_request)
-        updated_retry = TransitionRequestParams(worker_id=worker_id, retry_count=job_status.retry_count + 1)
-        await self._transition_locked(job_id, JobStatusCode.RETRYING, transition_request=updated_retry)
-        await self._transition_locked(job_id, JobStatusCode.ENQUEUED, transition_request=transition_request)

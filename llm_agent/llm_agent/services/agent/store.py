@@ -15,6 +15,7 @@ class JobIntakeStore(Protocol):
 
     async def get_status(self, job_id: UUID) -> JobStatus:
         """
+        Read only view of the current job status.
 
         :param job_id:
         :return:
@@ -60,5 +61,15 @@ class JobProcessingStore(Protocol):
         :param worker_id:
         :return:
         :raises: JobLeaseLostError - when the job is claimed by a different worker
+        """
+        ...
+
+    async def get_status(self, job_id: UUID) -> JobStatus:
+        """
+        Read only view of the current job status.
+
+        :param job_id:
+        :return:
+        :raise JobNotFoundError: when the job is not found in the store
         """
         ...

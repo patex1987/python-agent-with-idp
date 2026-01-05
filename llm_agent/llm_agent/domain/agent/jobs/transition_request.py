@@ -1,13 +1,15 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+
 class _UnsetField:
     __slots__ = ()
+
     def __repr__(self) -> str:
         return "UNSET"
 
-UNSET_FIELD = _UnsetField()
 
+UNSET_FIELD = _UnsetField()
 
 
 @dataclass(frozen=True)

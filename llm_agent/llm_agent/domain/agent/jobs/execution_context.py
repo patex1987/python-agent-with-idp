@@ -6,8 +6,9 @@ class JobExecutionContext:
     """
     Execution context for a job that provides cancellation signaling.
 
-    This context is used to coordinate graceful cancellation of the job 
+    This context is used to coordinate graceful cancellation of the job
     executor (which checks for cancellation at checkpoints).
+    It exists to stop work, not to decide the state.
 
     TODO: can be extended later with fence tokens.
     """

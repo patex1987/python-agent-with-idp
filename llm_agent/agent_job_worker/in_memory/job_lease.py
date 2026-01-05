@@ -30,10 +30,12 @@ class JobLeaseScope:
         job_id: uuid.UUID,
         job_store: JobProcessingStore,
         job_execution_context: JobExecutionContext,
+        heartbeat_interval_seconds: int = 5,
     ):
         self.worker_id = worker_id
         self.job_id = job_id
         self.job_store = job_store
+        self.heartbeat_interval_seconds = heartbeat_interval_seconds
         self._execution_ctx: JobExecutionContext = job_execution_context
         self._heartbeat_task: asyncio.Task | None = None
         self._running = False
@@ -69,18 +71,15 @@ class JobLeaseScope:
         :param job_id:
         :param job_execution_ctx:
         :return:
-
-        TODO: make heartbeat interval configurable
         """
-        heartbeat_interval_seconds = 5
         while self._running:
-            await asyncio.sleep(heartbeat_interval_seconds)
+            await asyncio.sleep(self.heartbeat_interval_seconds)
             if not self._running:
                 break
             try:
                 heartbeat_job_status = await self.job_store.heartbeat(job_id, self.worker_id)
                 if heartbeat_job_status == JobStatusCode.CANCELLED:
-                    logger.info(
+                    logger.warning(
                         "heartbeat detected canceled job. Executing will stop at the next checkpoint",
                         job_id=job_id,
                         worker_id=self.worker_id,

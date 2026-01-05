@@ -9,14 +9,13 @@ from llm_agent.infrastructure.agent.in_memory.store import InMemoryJobProcessing
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
-from tests.fake_implementations.llm_agent.di.factories.job_related import (
-    JobSignalQueueProvider,
-    InternalJobStorageProvider,
-    InternalEventLogsProvider,
-)
+from local_runtime.provider import InMemoryRuntime
 
 
 class ConsumerRegistrar(Registrar):
+    def __init__(self, shared_local_infrastructure: InMemoryRuntime):
+        self._shared_local_infrastructure = shared_local_infrastructure
+
     def register(self, registry: svcs.Registry) -> None:
         registry.register_factory(AgentJobExecutor, RandomSleepJobExecutor)
         job_signal_queue = self.get_job_signal_queue()
@@ -26,12 +25,15 @@ class ConsumerRegistrar(Registrar):
         registry.register_factory(Consumer, self.get_consumer)
 
     def get_job_signal_queue(self) -> JobSignalQueue:
-        return JobSignalQueueProvider.get_instance()
+        return self._shared_local_infrastructure.job_signal_queue
 
     def get_job_store(self) -> JobProcessingStore:
+        internal_job_storage = self._shared_local_infrastructure.internal_job_storage
+        internal_event_logs = self._shared_local_infrastructure.internal_event_logs
+
         return InMemoryJobProcessingStore(
-            internal_job_storage=InternalJobStorageProvider.get_instance(),
-            internal_event_logs=InternalEventLogsProvider.get_instance(),
+            internal_job_storage=internal_job_storage,
+            internal_event_logs=internal_event_logs,
             job_transition_policy=JobTransitionPolicy(),
         )
 
@@ -43,4 +45,5 @@ class ConsumerRegistrar(Registrar):
             job_signal_queue=svcs_container.get(JobSignalQueue),
             worker_id=worker_id,
             job_executor=svcs_container.get(AgentJobExecutor),
+            heartbeat_interval_seconds=2,
         )

@@ -6,17 +6,16 @@ from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobIntakeStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
-from tests.fake_implementations.llm_agent.di.factories.job_related import (
-    InternalJobStorageProvider,
-    InternalEventLogsProvider,
-    JobSignalQueueProvider,
-)
+from local_runtime.provider import InMemoryRuntime
 
 
 class InMemoryJobOrchestrationRegistrar(Registrar):
+    def __init__(self, shared_local_infrastructure: InMemoryRuntime):
+        self._shared_local_infrastructure = shared_local_infrastructure
+
     def register(self, registry: svcs.Registry) -> None:
-        job_store = self.__class__.create_job_store()
-        job_signal_queue = self.__class__.create_job_signal_queue()
+        job_store = self.create_job_store()
+        job_signal_queue = self.create_job_signal_queue()
 
         registry.register_value(JobIntakeStore, job_store)
         registry.register_value(JobSignalQueue, job_signal_queue)
@@ -27,8 +26,7 @@ class InMemoryJobOrchestrationRegistrar(Registrar):
         )
         registry.register_value(BackendJobOrchestrationService, job_orchestrator)
 
-    @classmethod
-    def create_job_store(cls) -> JobIntakeStore:
+    def create_job_store(self) -> JobIntakeStore:
         """
         create a job store, with shared internal storage.
 
@@ -36,8 +34,8 @@ class InMemoryJobOrchestrationRegistrar(Registrar):
         """
         from llm_agent.infrastructure.agent.in_memory.store import InMemoryJobIntakeStore
 
-        internal_job_storage = InternalJobStorageProvider.get_instance()
-        internal_event_logs = InternalEventLogsProvider.get_instance()
+        internal_job_storage = self._shared_local_infrastructure.internal_job_storage
+        internal_event_logs = self._shared_local_infrastructure.internal_event_logs
         job_transition_policy = JobTransitionPolicy()
 
         in_memory_job_store = InMemoryJobIntakeStore(
@@ -47,12 +45,11 @@ class InMemoryJobOrchestrationRegistrar(Registrar):
         )
         return in_memory_job_store
 
-    @classmethod
-    def create_job_signal_queue(cls) -> JobSignalQueue:
+    def create_job_signal_queue(self) -> JobSignalQueue:
         """
         Create an in-memory job queue with shared storage.
 
         So the worker can see inside the content in a single process setup.
         """
-        in_memory_job_queue = JobSignalQueueProvider.get_instance()
+        in_memory_job_queue = self._shared_local_infrastructure.job_signal_queue
         return in_memory_job_queue

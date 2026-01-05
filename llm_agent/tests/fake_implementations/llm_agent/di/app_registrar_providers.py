@@ -1,3 +1,4 @@
+from local_runtime.provider import create_default_local_shared_infrastructure
 from tests.fake_implementations.agent_job_worker.di.registrars.consumer import ConsumerRegistrar
 from tests.fake_implementations.llm_agent.di.registrars.auth import DevelopmentAuthRegistrar
 from llm_agent.di.app_wide_registrar import ApplicationDIConfig
@@ -9,17 +10,18 @@ from tests.fake_implementations.llm_agent.di.registrars.job_orchestrator import 
 def get_development_registrars() -> ApplicationDIConfig:
     """
     Registrars ensuring the service runs in local development mode.
-
-    TODO: create a separate DI registry for the infrastructure setup, avoid creating objects in place
     """
+
+    shared_local_infrastructure = create_default_local_shared_infrastructure()
+
     fastapi_lifespan_registrars = [
         ThrottleStepsServiceRegistrar(),
         GameStateRegistrar(),
-        InMemoryJobOrchestrationRegistrar(),
+        InMemoryJobOrchestrationRegistrar(shared_local_infrastructure),
     ]
     app_lifetime_registrars = [DevelopmentAuthRegistrar()]
 
-    infrastructure_registrars = [ConsumerRegistrar()]
+    infrastructure_registrars = [ConsumerRegistrar(shared_local_infrastructure)]
 
     app_registrars = ApplicationDIConfig(
         app_lifetime_registrars=app_lifetime_registrars,
