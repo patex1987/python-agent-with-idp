@@ -17,7 +17,7 @@ class ConsumerRegistrar(Registrar):
         self._shared_local_infrastructure = shared_local_infrastructure
 
     def register(self, registry: svcs.Registry) -> None:
-        registry.register_factory(AgentJobExecutor, RandomSleepJobExecutor)
+        registry.register_factory(AgentJobExecutor, self.get_job_executor)
         job_signal_queue = self.get_job_signal_queue()
         job_store = self.get_job_store()
         registry.register_value(JobSignalQueue, job_signal_queue)
@@ -36,6 +36,10 @@ class ConsumerRegistrar(Registrar):
             internal_event_logs=internal_event_logs,
             job_transition_policy=JobTransitionPolicy(),
         )
+
+    @classmethod
+    def get_job_executor(cls) -> AgentJobExecutor:
+        return RandomSleepJobExecutor()
 
     @classmethod
     def get_consumer(cls, svcs_container: svcs.Container) -> Consumer:

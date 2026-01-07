@@ -31,7 +31,7 @@ class InMemoryConsumer(Consumer):
         job_signal_queue: JobSignalQueue,
         worker_id: str,
         job_executor: AgentJobExecutor,
-        heartbeat_interval_seconds: int = 5,
+        heartbeat_interval_seconds: int | float = 5,
     ):
         """
 

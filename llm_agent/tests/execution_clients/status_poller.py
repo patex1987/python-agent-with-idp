@@ -95,8 +95,7 @@ async def poll_job_status_async(
         elapsed = time.monotonic() - start_time
         if elapsed > timeout_seconds:
             raise TimeoutError(
-                f"Job {job_id} did not reach terminal state within "
-                f"{timeout_seconds}s. Last status: {last_status}"
+                f"Job {job_id} did not reach terminal state within {timeout_seconds}s. Last status: {last_status}"
             )
 
         response = await client.get(f"/api/v1/agent/get-job-status/{job_id}")
