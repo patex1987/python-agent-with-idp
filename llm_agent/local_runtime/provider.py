@@ -14,6 +14,8 @@ class InMemoryRuntime:
 
     Used for local development and service execution.
     Use the dockerized setup for a close-to-production like setup
+
+    TODO: create a class for InMemoryJobEventLog ( a wrapper around internal event logs)
     """
 
     internal_job_storage: dict[uuid.UUID, JobStatus]

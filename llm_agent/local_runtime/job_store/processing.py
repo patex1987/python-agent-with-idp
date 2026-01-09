@@ -54,23 +54,41 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                 if not claim_expired:
                     continue
                 logger.info(f"Job claim on {job_id} expired, retrying")
+                self._events[job_id].append(
+                    JobEvent(
+                        job_id=job_id,
+                        event_type="claim_expired",
+                        payload={},
+                    )
+                )
                 await self.recover_expired_jobs(job_id, job_status, worker_id)
 
             for job_id, job_status in self._jobs.items():
                 if job_status.status == JobStatusCode.ENQUEUED:
+                    if job_status.cancel_requested:
+                        await self._set_cancelled_locked(job_id)
+                        continue
+
                     expiration_unix_ts = await get_new_expiration_ts()
                     transition_request = TransitionRequestParams(
                         worker_id=worker_id, expiration_unix_ts=expiration_unix_ts
                     )
                     await self._transition_locked(job_id, JobStatusCode.RUNNING, transition_request=transition_request)
                     logger.info(f"Job {job_id} claimed by {worker_id}")
+                    self._events[job_id].append(
+                        JobEvent(
+                            job_id=job_id,
+                            event_type="claimed",
+                            payload={'worker': str(worker_id)},
+                        )
+                    )
                     return ClaimedJob(id=job_id, claim_type="enqueued", job_status=self._jobs[job_id])
 
             return None
 
     async def append_event(self, evt: JobEvent) -> None: ...
 
-    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatusCode:
+    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatus:
         """
         Extend the expiration time of a running job claimed by a given worker.
 
@@ -83,17 +101,24 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             job_status = self._jobs[job_id]
 
             if job_status.status == JobStatusCode.CANCELLED:
-                return JobStatusCode.CANCELLED
+                return job_status
 
             if job_status.status != JobStatusCode.RUNNING:
-                return job_status.status
+                return job_status
 
             if job_status.claimed_worker != worker_id:
+                self._events[job_id].append(
+                    JobEvent(
+                        job_id=job_id,
+                        event_type="claim_lost",
+                        payload={'worker': str(worker_id)},
+                    )
+                )
                 raise JobLeaseLostError(f"Job {job_id} is not claimed by {worker_id}")
 
             updated_expiration_unix_ts = await get_new_expiration_ts()
 
-            self._jobs[job_id] = JobStatus(
+            updated_job_status = JobStatus(
                 id=job_status.id,
                 status=JobStatusCode.RUNNING,
                 result=job_status.result,
@@ -101,24 +126,50 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                 claimed_worker=worker_id,
                 claim_expiration_unix_ts=updated_expiration_unix_ts,
                 retry_count=job_status.retry_count,
+                cancel_requested=job_status.cancel_requested,
             )
-            return JobStatusCode.RUNNING
+            self._jobs[job_id] = updated_job_status
+            return updated_job_status
 
     async def set_failed(self, job_id: UUID, error: str) -> None:
         async with self._lock:
             transition_request = TransitionRequestParams(error=error)
             await self._transition_locked(job_id, JobStatusCode.FAILED, transition_request=transition_request)
+            self._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="job_failed",
+                    payload={'error': error},
+                )
+            )
 
     async def set_succeeded(self, job_id: UUID, result: dict) -> None:
         async with self._lock:
             transition_request = TransitionRequestParams(result=result)
             await self._transition_locked(job_id, JobStatusCode.SUCCEEDED, transition_request=transition_request)
+            self._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="job_succeeded",
+                    payload={'result': result},
+                )
+            )
 
     async def get_status(self, job_id: UUID) -> JobStatus:
         async with self._lock:
             if job_id not in self._jobs:
                 raise JobNotFoundError(job_id=str(job_id))
             return self._jobs[job_id]
+
+    async def set_cancelled(self, job_id: UUID) -> None:
+        """
+        Sets the job status to canceled definitively.
+
+        :param job_id:
+        :return:
+        """
+        async with self._lock:
+            await self._set_cancelled_locked(job_id)
 
     async def recover_expired_jobs(self, job_id, job_status, worker_id):
         """
@@ -140,6 +191,20 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         updated_retry = TransitionRequestParams(worker_id=worker_id, retry_count=job_status.retry_count + 1)
         await self._transition_locked(job_id, JobStatusCode.RETRYING, transition_request=updated_retry)
         await self._transition_locked(job_id, JobStatusCode.ENQUEUED, transition_request=transition_request)
+
+    async def _set_cancelled_locked(self, job_id: UUID) -> None:
+        """
+        Internal: Sets job status to cancelled. Expects lock to be held.
+        """
+        transition_request = TransitionRequestParams()
+        await self._transition_locked(job_id, JobStatusCode.CANCELLED, transition_request=transition_request)
+        self._events[job_id].append(
+            JobEvent(
+                job_id=job_id,
+                event_type="job_cancelled",
+                payload={},
+            )
+        )
 
     async def _transition_locked(
         self,
@@ -179,6 +244,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
             claimed_worker=worker_id,
             claim_expiration_unix_ts=claim_expiration_unix_ts,
             retry_count=retry_count,
+            cancel_requested=job_status.cancel_requested,
         )
 
 

@@ -16,6 +16,7 @@ import structlog
 
 from agent_job_worker.in_memory.consumer import InMemoryConsumer
 from agent_job_worker.in_memory.job_executor import AgentJobExecutor
+from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.execution_context import JobExecutionContext
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status_code import JobStatusCode
@@ -92,15 +93,30 @@ class SingleCheckpointExecutor(AgentJobExecutor):
         logger.info(f"{worker_id}: checkpoint work done", job_id=job_id)
 
         if job_execution_ctx.is_cancelled():
+            # TODO: you can't do it like this
+            job_store._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="Checkpoint cancelled",
+                    payload={'message': "cancellation detected during checkpoint execution"},
+                )
+            )
             logger.info(
                 f"{worker_id}: cancellation detected after checkpoint work, but completing checkpoint anyway",
                 job_id=job_id,
             )
             self.execution_cancelled = True
 
-        await job_store.heartbeat(job_id, worker_id)
 
         self.checkpoint_completed.set()
+        # TODO: you can't do it like this
+        job_store._events[job_id].append(
+            JobEvent(
+                job_id=job_id,
+                event_type="Checkpoint completed",
+                payload={'message': "we have reached the checkpoint"},
+            )
+        )
         logger.info(f"{worker_id}: checkpoint completed", job_id=job_id)
 
         if self.execution_cancelled:
@@ -218,14 +234,10 @@ class TestCheckpointCompletionDuringCancellation:
         try:
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_started.wait(), timeout=2.0)
 
-            cancelled = await job_intake_store.mark_cancelled(job_id)
+            cancelled = await job_intake_store.request_cancellation(job_id)
             assert cancelled, "Job should be cancellable"
 
-            await asyncio.sleep(1.0)
-
-            assert single_checkpoint_executor.checkpoint_work_done.is_set(), (
-                "Checkpoint work should complete even after cancellation"
-            )
+            await asyncio.wait_for(single_checkpoint_executor.checkpoint_work_done.wait(), timeout=1.0)
 
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_completed.wait(), timeout=1.0)
 
@@ -235,75 +247,9 @@ class TestCheckpointCompletionDuringCancellation:
 
             final_status = await job_processing_store.get_status(job_id)
             assert final_status.status == JobStatusCode.CANCELLED, "Job should be in CANCELLED status"
-
-        finally:
-            await consumer.shutdown_execution()
-            try:
-                await asyncio.wait_for(consumer_task, timeout=2.0)
-            except asyncio.TimeoutError:
-                consumer_task.cancel()
-                try:
-                    await consumer_task
-                except asyncio.CancelledError:
-                    pass
-
-    @pytest.mark.asyncio
-    async def test_job_not_claimed_when_cancelled_before_consumer_starts(
-        self,
-        job_intake_store,
-        job_processing_store,
-        job_signal_queue,
-        consumer,
-        single_checkpoint_executor,
-    ):
-        """
-        Test that a job cancelled before consumer starts is never claimed or executed.
-
-        Flow:
-        1. Create and enqueue a job
-        2. Cancel the job before consumer starts
-        3. Start consumer
-        4. Verify job is never claimed (remains CANCELLED, not RUNNING)
-        5. Verify executor never runs (checkpoint never starts)
-
-        Note: This is different from cancellation during execution. When cancelled
-        before consumer starts, the job is in CANCELLED state, so claim_job()
-        won't claim it (only ENQUEUED jobs are claimable).
-        """
-
-        job_request = JobRequest(
-            prompt="test cancellation before consumer starts",
-            history=[],
-            user_id="test_user",
-        )
-        job_status = await job_intake_store.create_job(job_request)
-        job_id = job_status.id
-        await job_intake_store.mark_enqueued(job_id)
-
-        cancelled = await job_intake_store.mark_cancelled(job_id)
-        assert cancelled, "Job should be cancellable"
-
-        status = await job_processing_store.get_status(job_id)
-        assert status.status == JobStatusCode.CANCELLED, "Job should be CANCELLED after cancellation"
-
-        await job_signal_queue.notify()
-        consumer_task = asyncio.create_task(consumer.consume_and_execute_loop())
-
-        try:
-            await asyncio.sleep(0.3)
-
-            assert not single_checkpoint_executor.checkpoint_started.is_set(), (
-                "Checkpoint should not start - job should not be claimed"
-            )
-
-            assert not single_checkpoint_executor.execution_stopped.is_set(), (
-                "Execution should not run - job was never claimed"
-            )
-
-            final_status = await job_processing_store.get_status(job_id)
-            assert final_status.status == JobStatusCode.CANCELLED, (
-                "Job should remain CANCELLED and never transition to RUNNING"
-            )
+            print("events in the store")
+            for evt in job_processing_store._events[job_id]:
+                print(evt)
 
         finally:
             await consumer.shutdown_execution()

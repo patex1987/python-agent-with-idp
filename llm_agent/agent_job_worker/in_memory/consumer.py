@@ -128,12 +128,14 @@ class InMemoryConsumer(Consumer):
             )
 
             if self._current_job_execution_ctx.is_cancelled():
+                await self.job_store.set_cancelled(job_id)
                 logger.info(f"{self.worker_id}: job cancelled", job_id=job_id)
                 return
 
             job_status = await self.job_store.get_status(job_id)
 
-            if job_status.status == JobStatusCode.CANCELLED:
+            if job_status.cancel_requested:
+                await self.job_store.set_cancelled(job_id)
                 logger.info(
                     f"{self.worker_id}: job cancelled (observed after execution)",
                     job_id=job_id,

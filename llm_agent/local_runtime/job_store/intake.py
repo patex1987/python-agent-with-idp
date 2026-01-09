@@ -47,6 +47,17 @@ class InMemoryJobIntakeStore(JobIntakeStore):
             )
             self._jobs[job_id] = job_status
             self._events[job_id] = deque()
+            self._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="created",
+                    payload={
+                        "prompt": job_request.prompt,
+                        "history": job_request.history,
+                        "user_id": job_request.user_id,
+                    },
+                )
+            )
             return job_status
 
     async def get_status(self, job_id: UUID) -> JobStatus:
@@ -65,10 +76,17 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 result=job_status.result,
                 error=job_status.error,
             )
+            self._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="enqueued",
+                    payload={},
+                )
+            )
 
     async def mark_cancelled(self, job_id: UUID) -> bool:
         """
-
+        DEPRECATED
         :param job_id:
         :return:
         :raises: JobNotFoundError
@@ -87,5 +105,39 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 status=JobStatusCode.CANCELLED,
                 result=job_status.result,
                 error=job_status.error,
+            )
+            self._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="cancel requested",
+                    payload={},
+                )
+            )
+            return True
+
+    async def request_cancellation(self, job_id: UUID) -> bool:
+        async with self._lock:
+            if job_id not in self._jobs:
+                raise JobNotFoundError(job_id=str(job_id))
+            job_status = self._jobs[job_id]
+            if job_status.status in TERMINAL_JOB_STATUSES:
+                return False
+
+            self._jobs[job_id] = JobStatus(
+                id=job_status.id,
+                status=job_status.status,
+                result=job_status.result,
+                error=job_status.error,
+                cancel_requested=True,
+                claimed_worker=job_status.claimed_worker,
+                claim_expiration_unix_ts=job_status.claim_expiration_unix_ts,
+                retry_count=job_status.retry_count,
+            )
+            self._events[job_id].append(
+                JobEvent(
+                    job_id=job_id,
+                    event_type="cancel requested",
+                    payload={},
+                )
             )
             return True

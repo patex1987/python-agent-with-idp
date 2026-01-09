@@ -31,7 +31,7 @@ class AgentJobExecutor(Protocol):
 
         :param job_id:
         :param worker_id:
-        :param job_store:
+        :param job_store: Todo: expose the event log instead of the job store only
         :param job_execution_ctx: Context for checking cancellation status at checkpoints
         :return:
         """
@@ -68,7 +68,6 @@ class RandomSleepJobExecutor(AgentJobExecutor):
             logger.info(f"{worker_id}: Running job step", job_id=job_id, step=i)
             step_execution_time = random.randint(0, 8)
             await asyncio.sleep(step_execution_time)
-            await job_store.heartbeat(job_id, worker_id)
             # await self.job_store.set_progress(job_id, i / 5, {"step": i})
             # await notifier.publish(JobEvent(job_id, "progress", {"step": i}))
 
@@ -101,4 +100,3 @@ class DummyJobExecutor(AgentJobExecutor):
             return
         logger.info(f"{worker_id}: Running job step", job_id=job_id)
         await asyncio.sleep(0.2)
-        await job_store.heartbeat(job_id, worker_id)

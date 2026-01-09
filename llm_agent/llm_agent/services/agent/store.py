@@ -7,7 +7,6 @@ from llm_agent.domain.agent.jobs.claim import ClaimedJob
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.event import JobEvent
-from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 
 
 class JobIntakeStore(Protocol):
@@ -33,6 +32,13 @@ class JobIntakeStore(Protocol):
         """
         ...
 
+    async def request_cancellation(self, job_id: UUID) -> bool:
+        """
+        User expresses an intent to cancel the job.
+
+        :param job_id:
+        :return:
+        """
 
 class JobProcessingStore(Protocol):
     """
@@ -51,9 +57,19 @@ class JobProcessingStore(Protocol):
 
     async def set_failed(self, job_id: UUID, error: str) -> None: ...
 
+    async def set_cancelled(self, job_id: UUID) -> None:
+        """
+        Sets the job status to cancelled.
+
+        Note: this is not about the intent but setting the actual status.
+        :param job_id:
+        :return:
+        """
+        ...
+
     async def append_event(self, evt: JobEvent) -> None: ...
 
-    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatusCode:
+    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatus:
         """
         Extend the expiration time of a running job claimed by a given worker.
 

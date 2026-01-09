@@ -110,3 +110,23 @@ async def poll_job_status_async(
 
         await asyncio.sleep(interval)
         interval = min(interval * backoff_factor, max_interval)
+
+
+def sync_wait_until(predicate, *, timeout=2.0, interval=0.01, what="condition"):
+    """
+    Polls the given predicate until it becomes true, or times out.
+
+    utility to be used in tests when waiting for signals
+
+    :param predicate:
+    :param timeout:
+    :param interval:
+    :param what:
+    :return:
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return
+        time.sleep(interval)
+    raise TimeoutError(f"Timed out waiting for {what}")

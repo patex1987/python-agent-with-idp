@@ -49,7 +49,7 @@ class BackendJobOrchestrationService:
         TODO: return proper domain objects instead of bool if needed
         """
         job_uuid = uuid.UUID(job_id)
-        is_cancelled = await self.job_store.mark_cancelled(job_id=job_uuid)
+        is_cancelled = await self.job_store.request_cancellation(job_id=job_uuid)
         if is_cancelled:
             await self.job_signal_queue.notify()
 

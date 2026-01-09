@@ -37,8 +37,7 @@ class ConsumerRegistrar(Registrar):
             job_transition_policy=JobTransitionPolicy(),
         )
 
-    @classmethod
-    def get_job_executor(cls) -> AgentJobExecutor:
+    def get_job_executor(self) -> AgentJobExecutor:
         return RandomSleepJobExecutor()
 
     @classmethod

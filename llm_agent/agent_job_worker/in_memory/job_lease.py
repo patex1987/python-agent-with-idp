@@ -78,7 +78,8 @@ class JobLeaseScope:
                 break
             try:
                 heartbeat_job_status = await self.job_store.heartbeat(job_id, self.worker_id)
-                if heartbeat_job_status == JobStatusCode.CANCELLED:
+
+                if heartbeat_job_status.cancel_requested:
                     logger.warning(
                         "heartbeat detected canceled job. Executing will stop at the next checkpoint",
                         job_id=job_id,

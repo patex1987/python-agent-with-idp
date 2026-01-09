@@ -20,3 +20,7 @@ class JobStatus:
     claimed_worker: str | None = None
     claim_expiration_unix_ts: float | None = None
     retry_count: int | None = 0
+
+    # intent-driven flags
+    cancel_requested: bool = False
+
