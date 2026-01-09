@@ -10,6 +10,9 @@ from llm_agent.domain.agent.jobs.event import JobEvent
 
 
 class JobIntakeStore(Protocol):
+    """
+    TODO: rename to JobControlPlaneStore
+    """
     async def create_job(self, job_request: JobRequest) -> JobStatus: ...
 
     async def get_status(self, job_id: UUID) -> JobStatus:
@@ -40,6 +43,7 @@ class JobIntakeStore(Protocol):
         :return:
         """
 
+
 class JobProcessingStore(Protocol):
     """
     Job store interface for the processing / consumer side
@@ -49,6 +53,7 @@ class JobProcessingStore(Protocol):
         of the job claiming
 
     Notes: never expose publicly setting the state to running
+    TODO: rename to JobWorkerStore
     """
 
     async def claim_job(self, worker_id: str) -> ClaimedJob | None: ...

@@ -1,7 +1,7 @@
 ```shell
 curl -X POST \
  -H "Content-Type: application/json"  -H "Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
- -d "{\"prompt\": \"How are you\", \"history\": []}"      http://127.0.0.1:8080/api/v1/agent/create-job
+-d "{\"prompt\": \"How are you\", \"history\": []}"      http://127.0.0.1:8080/api/v1/agent/jobs
 
 ```
 
@@ -11,14 +11,36 @@ curl -X POST \
 ```shell
 job_id=$(curl -X POST \
  -H "Content-Type: application/json"  -H "Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
- -d '{"prompt": "How are you", "history": []}'      http://127.0.0.1:8080/api/v1/agent/create-job | jq -r ".id")
+-d '{"prompt": "How are you", "history": []}'      http://127.0.0.1:8080/api/v1/agent/jobs | jq -r ".id")
 ```
 
 get the status:
 ```shell
 curl -X GET \
  -H "Content-Type: application/json"  -H "Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
- http://127.0.0.1:8080/api/v1/agent/get-job-status/$job_id
+ http://127.0.0.1:8080/api/v1/agent/jobs/$job_id
 
 
+```
+
+request cancellation:
+```shell
+curl -X POST \
+ -H "Content-Type: application/json"  -H "Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
+ http://127.0.0.1:8080/api/v1/agent/jobs/$job_id/cancel
+```
+
+get job events (all):
+```shell
+curl -X GET \
+ -H "Content-Type: application/json"  -H "Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
+ http://127.0.0.1:8080/api/v1/agent/jobs/$job_id/events
+```
+
+get job events (after a sequence cursor):
+```shell
+after=2
+curl -X GET \
+ -H "Content-Type: application/json"  -H "Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXX" \
+ "http://127.0.0.1:8080/api/v1/agent/jobs/$job_id/events?after=$after"
 ```

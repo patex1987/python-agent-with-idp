@@ -52,7 +52,7 @@ class TestAgentJobOrchestration:
         so the test can validate on the orchestration logic
         """
         response = agent_service_client_with_instant_execution.post(
-            "/api/v1/agent/create-job",
+            "/api/v1/agent/jobs",
             json={
                 "prompt": "what is the weather like today?",
                 "history": [],

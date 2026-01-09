@@ -1,9 +1,8 @@
 import uuid
-from collections import deque
 from dataclasses import dataclass
 
-from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.status import JobStatus
+from local_runtime.event_log.in_memory import InMemoryJobEventLog
 from local_runtime.job_signal_queue.queue import InMemoryJobSignalQueue
 
 
@@ -19,13 +18,13 @@ class InMemoryRuntime:
     """
 
     internal_job_storage: dict[uuid.UUID, JobStatus]
-    internal_event_logs: dict[uuid.UUID, deque[JobEvent]]
+    internal_event_logs: InMemoryJobEventLog
     job_signal_queue: InMemoryJobSignalQueue
 
 
 def create_default_in_memory_runtime() -> InMemoryRuntime:
     return InMemoryRuntime(
         internal_job_storage={},
-        internal_event_logs={},
+        internal_event_logs=InMemoryJobEventLog(),
         job_signal_queue=InMemoryJobSignalQueue(),
     )

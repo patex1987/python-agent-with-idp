@@ -5,7 +5,6 @@ import structlog
 
 from agent_job_worker.domain.exception import JobLeaseLostError
 from llm_agent.domain.agent.jobs.execution_context import JobExecutionContext
-from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.services.agent.store import JobProcessingStore
 
 logger = structlog.get_logger(__name__)

@@ -1,13 +1,14 @@
 import asyncio
 import uuid
-from collections import deque
 from uuid import UUID
 
+from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.exception import JobNotFoundError
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.status_code import JobStatusCode, TERMINAL_JOB_STATUSES
+from llm_agent.services.agent.event_log import JobEventLog
 from llm_agent.services.agent.store import JobIntakeStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
 
@@ -16,7 +17,7 @@ class InMemoryJobIntakeStore(JobIntakeStore):
     def __init__(
         self,
         internal_job_storage: dict[UUID, JobStatus],
-        internal_event_logs: dict[UUID, deque[JobEvent]],
+        internal_event_logs: JobEventLog,
         job_transition_policy: JobTransitionPolicy,
     ):
         """
@@ -46,17 +47,13 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 error=None,
             )
             self._jobs[job_id] = job_status
-            self._events[job_id] = deque()
-            self._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="created",
-                    payload={
-                        "prompt": job_request.prompt,
-                        "history": job_request.history,
-                        "user_id": job_request.user_id,
-                    },
-                )
+            await self._events.init_job_stream(job_id=job_id)
+            await self._events.append(
+                job_id=job_id,
+                event_type="created",
+                payload={
+                    "user_id": job_request.user_id,
+                },
             )
             return job_status
 
@@ -76,12 +73,10 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 result=job_status.result,
                 error=job_status.error,
             )
-            self._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="enqueued",
-                    payload={},
-                )
+            await self._events.append(
+                job_id=job_id,
+                event_type="enqueued",
+                payload={},
             )
 
     async def mark_cancelled(self, job_id: UUID) -> bool:
@@ -106,12 +101,10 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 result=job_status.result,
                 error=job_status.error,
             )
-            self._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="cancel requested",
-                    payload={},
-                )
+            await self._events.append(
+                job_id=job_id,
+                event_type="cancelled",
+                payload={},
             )
             return True
 
@@ -121,6 +114,8 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 raise JobNotFoundError(job_id=str(job_id))
             job_status = self._jobs[job_id]
             if job_status.status in TERMINAL_JOB_STATUSES:
+                return False
+            if job_status.cancel_requested:
                 return False
 
             self._jobs[job_id] = JobStatus(
@@ -133,11 +128,24 @@ class InMemoryJobIntakeStore(JobIntakeStore):
                 claim_expiration_unix_ts=job_status.claim_expiration_unix_ts,
                 retry_count=job_status.retry_count,
             )
-            self._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="cancel requested",
-                    payload={},
-                )
+            await self._events.append(
+                job_id=job_id,
+                event_type="cancel requested",
+                payload={},
             )
             return True
+
+    async def get_events(self, job_id: UUID, *, after_sequence: int | None = None) -> list[JobEvent]:
+        """
+        Retrieve events for a job from the event log.
+
+        :param job_id: The job ID
+        :param after_sequence: Optional sequence number to filter events after
+        :return: List of job events
+        :raises: JobNotFoundError if the job is not found
+        :raises: ValueError if event log is not available
+        """
+        # Verify job exists first
+        if job_id not in self._jobs:
+            raise JobNotFoundError(job_id=str(job_id))
+        return await self._events.list(job_id=job_id, after_sequence=after_sequence)

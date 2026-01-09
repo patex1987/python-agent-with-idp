@@ -6,7 +6,6 @@ from agent_job_worker.in_memory.job_executor import AgentJobExecutor
 from agent_job_worker.in_memory.job_lease import JobLeaseScope
 from llm_agent.domain.agent.jobs.claim import ClaimedJob
 from llm_agent.domain.agent.jobs.execution_context import JobExecutionContext
-from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.services.agent.queue import JobSignalQueue
 from llm_agent.services.agent.store import JobProcessingStore
 

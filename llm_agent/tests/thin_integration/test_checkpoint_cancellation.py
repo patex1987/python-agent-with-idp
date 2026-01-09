@@ -16,12 +16,12 @@ import structlog
 
 from agent_job_worker.in_memory.consumer import InMemoryConsumer
 from agent_job_worker.in_memory.job_executor import AgentJobExecutor
-from llm_agent.domain.agent.jobs.event import JobEvent
 from llm_agent.domain.agent.jobs.execution_context import JobExecutionContext
 from llm_agent.domain.agent.jobs.request import JobRequest
 from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.services.agent.store import JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
+from local_runtime.event_log.in_memory import InMemoryJobEventLog
 from local_runtime.job_signal_queue.queue import InMemoryJobSignalQueue
 from local_runtime.job_store.intake import InMemoryJobIntakeStore
 from local_runtime.job_store.processing import InMemoryJobProcessingStore
@@ -94,12 +94,10 @@ class SingleCheckpointExecutor(AgentJobExecutor):
 
         if job_execution_ctx.is_cancelled():
             # TODO: you can't do it like this
-            job_store._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="Checkpoint cancelled",
-                    payload={'message': "cancellation detected during checkpoint execution"},
-                )
+            job_store._events.append(
+                job_id=job_id,
+                event_type="Checkpoint cancelled",
+                payload={"message": "cancellation detected during checkpoint execution"},
             )
             logger.info(
                 f"{worker_id}: cancellation detected after checkpoint work, but completing checkpoint anyway",
@@ -107,15 +105,12 @@ class SingleCheckpointExecutor(AgentJobExecutor):
             )
             self.execution_cancelled = True
 
-
         self.checkpoint_completed.set()
         # TODO: you can't do it like this
-        job_store._events[job_id].append(
-            JobEvent(
-                job_id=job_id,
-                event_type="Checkpoint completed",
-                payload={'message': "we have reached the checkpoint"},
-            )
+        job_store._events.append(
+            job_id=job_id,
+            event_type="Checkpoint cancelled",
+            payload={"message": "cancellation detected during checkpoint execution"},
         )
         logger.info(f"{worker_id}: checkpoint completed", job_id=job_id)
 
@@ -130,12 +125,11 @@ class SingleCheckpointExecutor(AgentJobExecutor):
 @pytest.fixture
 def in_memory_runtime():
     """Create shared in-memory runtime for job store and signal queue."""
-    from collections import deque
     from local_runtime.provider import InMemoryRuntime
 
     return InMemoryRuntime(
         internal_job_storage={},
-        internal_event_logs={},
+        internal_event_logs=InMemoryJobEventLog(),
         job_signal_queue=InMemoryJobSignalQueue(),
     )
 
@@ -233,22 +227,19 @@ class TestCheckpointCompletionDuringCancellation:
 
         try:
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_started.wait(), timeout=2.0)
-
             cancelled = await job_intake_store.request_cancellation(job_id)
             assert cancelled, "Job should be cancellable"
-
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_work_done.wait(), timeout=1.0)
-
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_completed.wait(), timeout=1.0)
-
             await asyncio.wait_for(single_checkpoint_executor.execution_stopped.wait(), timeout=1.0)
-
             assert single_checkpoint_executor.execution_cancelled, "Execution should have detected cancellation"
 
             final_status = await job_processing_store.get_status(job_id)
             assert final_status.status == JobStatusCode.CANCELLED, "Job should be in CANCELLED status"
+
             print("events in the store")
-            for evt in job_processing_store._events[job_id]:
+            job_events = await job_processing_store._events.list(job_id)
+            for evt in job_events:
                 print(evt)
 
         finally:

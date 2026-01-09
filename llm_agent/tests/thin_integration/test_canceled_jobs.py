@@ -18,13 +18,13 @@ from local_runtime.provider import create_default_in_memory_runtime, InMemoryRun
 from tests.execution_clients.status_poller import poll_job_status, sync_wait_until
 from tests.fake_implementations.agent_job_worker.di.registrars.consumer import ConsumerRegistrar
 from tests.fake_implementations.di.ajustable_registrar import ComposableRegistrarProvider
-from tests.fake_implementations.di.registrars.dependency_override import DependencyOverrideRegistrar
 from tests.fake_implementations.llm_agent.di.registrars.job_orchestrator import InMemoryJobOrchestrationRegistrar
 
 logger = structlog.getLogger(__name__)
 
 
 HEARTBEAT_INTERVAL_SECONDS = 0.1
+
 
 class SignalControlledJobExecutor(AgentJobExecutor):
     """
@@ -69,8 +69,8 @@ class SignalControlledJobExecutor(AgentJobExecutor):
 def signal_controlled_executor():
     return SignalControlledJobExecutor()
 
-class FastConsumerRegistrar(ConsumerRegistrar):
 
+class FastConsumerRegistrar(ConsumerRegistrar):
     def __init__(self, shared_local_infrastructure: InMemoryRuntime, executor):
         self._shared_local_infrastructure = shared_local_infrastructure
         self._executor = executor
@@ -120,7 +120,7 @@ class TestCanceledJobExecution:
         state.
         """
         job_creation_response = agent_service_client_with_blockable_execution.post(
-            "/api/v1/agent/create-job",
+            "/api/v1/agent/jobs",
             json={
                 "prompt": "what is the weather like today?",
                 "history": [],
@@ -146,8 +146,6 @@ class TestCanceledJobExecution:
         assert signal_controlled_executor._started.is_set()
         assert not signal_controlled_executor._finished.is_set()
 
-
-
     def test_canceled_during_execution(self, signal_controlled_executor, agent_service_client_with_blockable_execution):
         """
         Job execution is canceled during execution.
@@ -158,7 +156,7 @@ class TestCanceledJobExecution:
         - the _finished event should never be set
         """
         job_creation_response = agent_service_client_with_blockable_execution.post(
-            "/api/v1/agent/create-job",
+            "/api/v1/agent/jobs",
             json={
                 "prompt": "what is the weather like today?",
                 "history": [],
@@ -195,7 +193,7 @@ class TestCanceledJobExecution:
         as such cancellation has no effect.
         """
         job_creation_response = agent_service_client_with_blockable_execution.post(
-            "/api/v1/agent/create-job",
+            "/api/v1/agent/jobs",
             json={
                 "prompt": "what is the weather like today?",
                 "history": [],

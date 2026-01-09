@@ -45,7 +45,7 @@ def poll_job_status(
                 f"Job {job_id} did not reach terminal state within {timeout_seconds}s. Last status: {last_status}"
             )
 
-        response = client.get(f"/api/v1/agent/get-job-status/{job_id}")
+        response = client.get(f"/api/v1/agent/jobs/{job_id}")
         response.raise_for_status()  # Raises for 4xx/5xx
 
         status_data = response.json()
@@ -98,7 +98,7 @@ async def poll_job_status_async(
                 f"Job {job_id} did not reach terminal state within {timeout_seconds}s. Last status: {last_status}"
             )
 
-        response = await client.get(f"/api/v1/agent/get-job-status/{job_id}")
+        response = await client.get(f"/api/v1/agent/jobs/{job_id}")
         response.raise_for_status()
 
         status_data = response.json()

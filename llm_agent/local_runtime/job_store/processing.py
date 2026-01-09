@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-from collections import deque
 from uuid import UUID
 
 import structlog
@@ -12,6 +11,7 @@ from llm_agent.domain.agent.jobs.exception import JobNotFoundError
 from llm_agent.domain.agent.jobs.status import JobStatus
 from llm_agent.domain.agent.jobs.status_code import JobStatusCode
 from llm_agent.domain.agent.jobs.transition_request import TransitionRequestParams, get_value_or_fallback
+from llm_agent.services.agent.event_log import JobEventLog
 from llm_agent.services.agent.store import JobProcessingStore
 from llm_agent.services.agent.transition_policy import JobTransitionPolicy
 
@@ -22,7 +22,7 @@ class InMemoryJobProcessingStore(JobProcessingStore):
     def __init__(
         self,
         internal_job_storage: dict[UUID, JobStatus],
-        internal_event_logs: dict[UUID, deque[JobEvent]],
+        internal_event_logs: JobEventLog,
         job_transition_policy: JobTransitionPolicy,
     ):
         """
@@ -54,12 +54,10 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                 if not claim_expired:
                     continue
                 logger.info(f"Job claim on {job_id} expired, retrying")
-                self._events[job_id].append(
-                    JobEvent(
-                        job_id=job_id,
-                        event_type="claim_expired",
-                        payload={},
-                    )
+                await self._events.append(
+                    job_id=job_id,
+                    event_type="claim_expired",
+                    payload={},
                 )
                 await self.recover_expired_jobs(job_id, job_status, worker_id)
 
@@ -75,12 +73,10 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                     )
                     await self._transition_locked(job_id, JobStatusCode.RUNNING, transition_request=transition_request)
                     logger.info(f"Job {job_id} claimed by {worker_id}")
-                    self._events[job_id].append(
-                        JobEvent(
-                            job_id=job_id,
-                            event_type="claimed",
-                            payload={'worker': str(worker_id)},
-                        )
+                    await self._events.append(
+                        job_id=job_id,
+                        event_type="claimed",
+                        payload={"worker": str(worker_id)},
                     )
                     return ClaimedJob(id=job_id, claim_type="enqueued", job_status=self._jobs[job_id])
 
@@ -107,12 +103,10 @@ class InMemoryJobProcessingStore(JobProcessingStore):
                 return job_status
 
             if job_status.claimed_worker != worker_id:
-                self._events[job_id].append(
-                    JobEvent(
-                        job_id=job_id,
-                        event_type="claim_lost",
-                        payload={'worker': str(worker_id)},
-                    )
+                await self._events.append(
+                    job_id=job_id,
+                    event_type="claim_lost",
+                    payload={"worker": str(worker_id)},
                 )
                 raise JobLeaseLostError(f"Job {job_id} is not claimed by {worker_id}")
 
@@ -135,24 +129,20 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         async with self._lock:
             transition_request = TransitionRequestParams(error=error)
             await self._transition_locked(job_id, JobStatusCode.FAILED, transition_request=transition_request)
-            self._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="job_failed",
-                    payload={'error': error},
-                )
+            await self._events.append(
+                job_id=job_id,
+                event_type="job_failed",
+                payload={"error": error},
             )
 
     async def set_succeeded(self, job_id: UUID, result: dict) -> None:
         async with self._lock:
             transition_request = TransitionRequestParams(result=result)
             await self._transition_locked(job_id, JobStatusCode.SUCCEEDED, transition_request=transition_request)
-            self._events[job_id].append(
-                JobEvent(
-                    job_id=job_id,
-                    event_type="job_succeeded",
-                    payload={'result': result},
-                )
+            await self._events.append(
+                job_id=job_id,
+                event_type="job_succeeded",
+                payload={"result": "done"},
             )
 
     async def get_status(self, job_id: UUID) -> JobStatus:
@@ -197,13 +187,12 @@ class InMemoryJobProcessingStore(JobProcessingStore):
         Internal: Sets job status to cancelled. Expects lock to be held.
         """
         transition_request = TransitionRequestParams()
+        logger.info("Job cancelled", job_id=job_id)
         await self._transition_locked(job_id, JobStatusCode.CANCELLED, transition_request=transition_request)
-        self._events[job_id].append(
-            JobEvent(
-                job_id=job_id,
-                event_type="job_cancelled",
-                payload={},
-            )
+        await self._events.append(
+            job_id=job_id,
+            event_type="cancelled",
+            payload={},
         )
 
     async def _transition_locked(

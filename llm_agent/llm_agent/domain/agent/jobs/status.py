@@ -23,4 +23,3 @@ class JobStatus:
 
     # intent-driven flags
     cancel_requested: bool = False
-
