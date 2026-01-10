@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 
-from agent_job_worker.in_memory.consumer import Consumer
+from agent_run_worker.in_memory.consumer import Consumer
 from llm_agent.domain.infrastructure_setup import InfrastructureSetup
 
 
@@ -10,7 +10,7 @@ class LocalDevInfrastructureSetup(InfrastructureSetup):
     infrastructure setup for local development.
 
     Sets up things like:
-    - background message job consumer - for processing the load coming from
+    - background message run consumer - for processing the load coming from
         the rest api
     """
 

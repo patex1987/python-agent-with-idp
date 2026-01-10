@@ -1,0 +1,3 @@
+class RunLeaseLostError(Exception):
+    pass
+

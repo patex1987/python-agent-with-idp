@@ -1,43 +1,43 @@
 from typing import Protocol
 from uuid import UUID
 
-from llm_agent.domain.agent.jobs.event import JobEvent
+from llm_agent.domain.agent.runs.event import RunEvent
 
 
-class JobEventLog(Protocol):
+class RunEventLog(Protocol):
     """
-    Append only event log for agent jobs.
+    Append only event log for agent runs.
     """
 
-    async def init_job_stream(self, job_id: UUID) -> None:
+    async def init_run_stream(self, run_id: UUID) -> None:
         """
-        Create an empty event stream for a job.
-        :param job_id:
+        Create an empty event stream for a run.
+        :param run_id:
         :return:
         """
         ...
 
-    async def append(self, job_id: UUID, *, event_type: str, payload: dict[str, str]) -> JobEvent:
+    async def append(self, run_id: UUID, *, event_type: str, payload: dict[str, str]) -> RunEvent:
         """
-        Append a new event to the job's stream
+        Append a new event to the run's stream
 
         It must ensure:
         - atomic sequence nr
         - assign a timestamp
         - guarantee ordering
 
-        :param job_id:
+        :param run_id:
         :param event_type:
         :param payload:
         :return:
         """
         ...
 
-    async def list(self, job_id: UUID, *, after_sequence: int | None = None) -> list[JobEvent]:
+    async def list(self, run_id: UUID, *, after_sequence: int | None = None) -> list[RunEvent]:
         """
-        List all events from the given job after the provided sequence_nr.
+        List all events from the given run after the provided sequence_nr.
 
-        :param job_id:
+        :param run_id:
         :param after_sequence:
         :return:
         """

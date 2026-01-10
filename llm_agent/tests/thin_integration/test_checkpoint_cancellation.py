@@ -1,10 +1,10 @@
 """
-Unit/thin integration tests for checkpoint-based job cancellation.
+Unit/thin integration tests for checkpoint-based run cancellation.
 
 These tests skip the HTTP layer and focus on the consumer and executor,
 using test doubles (real in-memory implementations) instead of mocks.
 
-The key behavior being tested: when a job is cancelled during checkpoint execution,
+The key behavior being tested: when a run is cancelled during checkpoint execution,
 the checkpoint must complete before execution stops.
 """
 
@@ -14,22 +14,22 @@ from uuid import UUID
 import pytest
 import structlog
 
-from agent_job_worker.in_memory.consumer import InMemoryConsumer
-from agent_job_worker.in_memory.job_executor import AgentJobExecutor
-from llm_agent.domain.agent.jobs.execution_context import JobExecutionContext
-from llm_agent.domain.agent.jobs.request import JobRequest
-from llm_agent.domain.agent.jobs.status_code import JobStatusCode
-from llm_agent.services.agent.store import JobProcessingStore
-from llm_agent.services.agent.transition_policy import JobTransitionPolicy
-from local_runtime.event_log.in_memory import InMemoryJobEventLog
-from local_runtime.job_signal_queue.queue import InMemoryJobSignalQueue
-from local_runtime.job_store.intake import InMemoryJobIntakeStore
-from local_runtime.job_store.processing import InMemoryJobProcessingStore
+from agent_run_worker.in_memory.consumer import InMemoryConsumer
+from agent_run_worker.in_memory.run_executor import AgentRunExecutor
+from llm_agent.domain.agent.runs.execution_context import RunExecutionContext
+from llm_agent.domain.agent.runs.request import RunRequest
+from llm_agent.domain.agent.runs.status_code import RunStatusCode
+from llm_agent.services.agent.store import RunProcessingStore
+from llm_agent.services.agent.transition_policy import RunTransitionPolicy
+from local_runtime.event_log.in_memory import InMemoryRunEventLog
+from local_runtime.run_signal_queue.queue import InMemoryRunSignalQueue
+from local_runtime.run_store.intake import InMemoryRunIntakeStore
+from local_runtime.run_store.processing import InMemoryRunProcessingStore
 
 logger = structlog.getLogger(__name__)
 
 
-class SingleCheckpointExecutor(AgentJobExecutor):
+class SingleCheckpointExecutor(AgentRunExecutor):
     """
     Test double executor with a single checkpoint.
 
@@ -57,10 +57,10 @@ class SingleCheckpointExecutor(AgentJobExecutor):
 
     async def execute(
         self,
-        job_id: UUID,
+        run_id: UUID,
         worker_id: str,
-        job_store: JobProcessingStore,
-        job_execution_ctx: JobExecutionContext,
+        run_store: RunProcessingStore,
+        run_execution_ctx: RunExecutionContext,
     ):
         """
         Execute a single checkpoint with cancellation checks.
@@ -76,88 +76,88 @@ class SingleCheckpointExecutor(AgentJobExecutor):
         This ensures that if cancellation happens during the work phase,
         the checkpoint still completes fully before execution stops.
         """
-        logger.info(f"{worker_id}: execution started", job_id=job_id)
+        logger.info(f"{worker_id}: execution started", run_id=run_id)
 
-        if job_execution_ctx.is_cancelled():
-            logger.info(f"{worker_id}: cancellation detected before checkpoint", job_id=job_id)
+        if run_execution_ctx.is_cancelled():
+            logger.info(f"{worker_id}: cancellation detected before checkpoint", run_id=run_id)
             self.execution_cancelled = True
             self.execution_stopped.set()
             return
 
         self.checkpoint_started.set()
-        logger.info(f"{worker_id}: checkpoint started", job_id=job_id)
+        logger.info(f"{worker_id}: checkpoint started", run_id=run_id)
 
         await asyncio.sleep(self.checkpoint_duration_seconds)
 
         self.checkpoint_work_done.set()
-        logger.info(f"{worker_id}: checkpoint work done", job_id=job_id)
+        logger.info(f"{worker_id}: checkpoint work done", run_id=run_id)
 
-        if job_execution_ctx.is_cancelled():
+        if run_execution_ctx.is_cancelled():
             # TODO: you can't do it like this
-            job_store._events.append(
-                job_id=job_id,
+            run_store._events.append(
+                run_id=run_id,
                 event_type="Checkpoint cancelled",
                 payload={"message": "cancellation detected during checkpoint execution"},
             )
             logger.info(
                 f"{worker_id}: cancellation detected after checkpoint work, but completing checkpoint anyway",
-                job_id=job_id,
+                run_id=run_id,
             )
             self.execution_cancelled = True
 
         self.checkpoint_completed.set()
         # TODO: you can't do it like this
-        job_store._events.append(
-            job_id=job_id,
+        run_store._events.append(
+            run_id=run_id,
             event_type="Checkpoint cancelled",
             payload={"message": "cancellation detected during checkpoint execution"},
         )
-        logger.info(f"{worker_id}: checkpoint completed", job_id=job_id)
+        logger.info(f"{worker_id}: checkpoint completed", run_id=run_id)
 
         if self.execution_cancelled:
             self.execution_stopped.set()
             return
 
-        logger.info(f"{worker_id}: execution completed normally", job_id=job_id)
+        logger.info(f"{worker_id}: execution completed normally", run_id=run_id)
         self.execution_stopped.set()
 
 
 @pytest.fixture
 def in_memory_runtime():
-    """Create shared in-memory runtime for job store and signal queue."""
+    """Create shared in-memory runtime for run store and signal queue."""
     from local_runtime.provider import InMemoryRuntime
 
     return InMemoryRuntime(
-        internal_job_storage={},
-        internal_event_logs=InMemoryJobEventLog(),
-        job_signal_queue=InMemoryJobSignalQueue(),
+        internal_run_storage={},
+        internal_event_logs=InMemoryRunEventLog(),
+        run_signal_queue=InMemoryRunSignalQueue(),
     )
 
 
 @pytest.fixture
-def job_intake_store(in_memory_runtime):
-    """Create job intake store (for creating/enqueuing jobs)."""
-    return InMemoryJobIntakeStore(
-        internal_job_storage=in_memory_runtime.internal_job_storage,
+def run_intake_store(in_memory_runtime):
+    """Create run intake store (for creating/enqueuing runs)."""
+    return InMemoryRunIntakeStore(
+        internal_run_storage=in_memory_runtime.internal_run_storage,
         internal_event_logs=in_memory_runtime.internal_event_logs,
-        job_transition_policy=JobTransitionPolicy(),
+        run_transition_policy=RunTransitionPolicy(),
     )
 
 
 @pytest.fixture
-def job_processing_store(in_memory_runtime):
-    """Create job processing store (for worker to claim/process jobs)."""
-    return InMemoryJobProcessingStore(
-        internal_job_storage=in_memory_runtime.internal_job_storage,
+def run_processing_store(in_memory_runtime):
+    """Create run processing store (for worker to claim/process runs)."""
+    return InMemoryRunProcessingStore(
+        internal_run_storage=in_memory_runtime.internal_run_storage,
         internal_event_logs=in_memory_runtime.internal_event_logs,
-        job_transition_policy=JobTransitionPolicy(),
+        run_transition_policy=RunTransitionPolicy(),
     )
 
 
 @pytest.fixture
-def job_signal_queue(in_memory_runtime):
-    """Get the shared job signal queue."""
-    return in_memory_runtime.job_signal_queue
+def run_signal_queue(in_memory_runtime):
+    """Get the shared run signal queue."""
+    return in_memory_runtime.run_signal_queue
 
 
 @pytest.fixture
@@ -167,13 +167,13 @@ def single_checkpoint_executor():
 
 
 @pytest.fixture
-def consumer(job_processing_store, job_signal_queue, single_checkpoint_executor):
+def consumer(run_processing_store, run_signal_queue, single_checkpoint_executor):
     """Create consumer with fast heartbeat for quick cancellation detection."""
     return InMemoryConsumer(
-        job_store=job_processing_store,
-        job_signal_queue=job_signal_queue,
+        run_store=run_processing_store,
+        run_signal_queue=run_signal_queue,
         worker_id="test_worker",
-        job_executor=single_checkpoint_executor,
+        run_executor=single_checkpoint_executor,
         heartbeat_interval_seconds=0.1,  # Fast heartbeat for tests
     )
 
@@ -185,16 +185,16 @@ class TestCheckpointCompletionDuringCancellation:
     Key assertion: When cancellation happens during checkpoint execution,
     the checkpoint must complete fully before execution stops.
 
-    TODO: we need deterministic tests, so these should rely on job store's
+    TODO: we need deterministic tests, so these should rely on run store's
         event logs as a source of truth
     """
 
     @pytest.mark.asyncio
     async def test_checkpoint_completes_even_when_cancelled_during_execution(
         self,
-        job_intake_store,
-        job_processing_store,
-        job_signal_queue,
+        run_intake_store,
+        run_processing_store,
+        run_signal_queue,
         consumer,
         single_checkpoint_executor,
     ):
@@ -202,44 +202,44 @@ class TestCheckpointCompletionDuringCancellation:
         Test that a checkpoint completes even if cancellation happens during its execution.
 
         Flow:
-        1. Create and enqueue a job
+        1. Create and enqueue a run
         2. Start consumer in background
         3. Wait for checkpoint to start
-        4. Cancel the job (mark as CANCELLED in store) while checkpoint work is running
+        4. Cancel the run (mark as CANCELLED in store) while checkpoint work is running
         5. Wait for heartbeat to detect cancellation
         6. Verify checkpoint work completes
         7. Verify checkpoint fully completes (heartbeat called)
         8. Verify execution stops after checkpoint completion
-        9. Verify job status is CANCELLED
+        9. Verify run status is CANCELLED
         """
 
-        job_request = JobRequest(
+        run_request = RunRequest(
             prompt="test checkpoint cancellation",
             history=[],
             user_id="test_user",
         )
-        job_status = await job_intake_store.create_job(job_request)
-        job_id = job_status.id
-        await job_intake_store.mark_enqueued(job_id)
-        await job_signal_queue.notify()
+        run_status = await run_intake_store.create_run(run_request)
+        run_id = run_status.id
+        await run_intake_store.mark_enqueued(run_id)
+        await run_signal_queue.notify()
 
         consumer_task = asyncio.create_task(consumer.consume_and_execute_loop())
 
         try:
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_started.wait(), timeout=2.0)
-            cancelled = await job_intake_store.request_cancellation(job_id)
-            assert cancelled, "Job should be cancellable"
+            cancelled = await run_intake_store.request_cancellation(run_id)
+            assert cancelled, "Run should be cancellable"
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_work_done.wait(), timeout=1.0)
             await asyncio.wait_for(single_checkpoint_executor.checkpoint_completed.wait(), timeout=1.0)
             await asyncio.wait_for(single_checkpoint_executor.execution_stopped.wait(), timeout=1.0)
             assert single_checkpoint_executor.execution_cancelled, "Execution should have detected cancellation"
 
-            final_status = await job_processing_store.get_status(job_id)
-            assert final_status.status == JobStatusCode.CANCELLED, "Job should be in CANCELLED status"
+            final_status = await run_processing_store.get_status(run_id)
+            assert final_status.status == RunStatusCode.CANCELLED, "Run should be in CANCELLED status"
 
             print("events in the store")
-            job_events = await job_processing_store._events.list(job_id)
-            for evt in job_events:
+            run_events = await run_processing_store._events.list(run_id)
+            for evt in run_events:
                 print(evt)
 
         finally:

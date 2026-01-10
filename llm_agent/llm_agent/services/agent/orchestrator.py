@@ -1,72 +1,72 @@
 from uuid import UUID
 
-from llm_agent.domain.agent.jobs.event import JobEvent
-from llm_agent.domain.agent.jobs.request import JobRequest
-from llm_agent.domain.agent.jobs.status import JobStatus
-from llm_agent.services.agent.queue import JobSignalQueue
-from llm_agent.services.agent.store import JobIntakeStore
+from llm_agent.domain.agent.runs.event import RunEvent
+from llm_agent.domain.agent.runs.request import RunRequest
+from llm_agent.domain.agent.runs.status import RunStatus
+from llm_agent.services.agent.queue import RunSignalQueue
+from llm_agent.services.agent.store import RunIntakeStore
 
 
-class BackendJobOrchestrationService:
+class BackendRunOrchestrationService:
     def __init__(
         self,
-        job_store: JobIntakeStore,
-        job_signal_queue: JobSignalQueue,
+        run_store: RunIntakeStore,
+        run_signal_queue: RunSignalQueue,
     ):
-        self.job_store = job_store
-        self.job_signal_queue = job_signal_queue
+        self.run_store = run_store
+        self.run_signal_queue = run_signal_queue
 
-    async def create_job(self, prompt: str) -> JobStatus:
+    async def create_run(self, prompt: str) -> RunStatus:
         """
 
         :param prompt:
         :return:
         """
-        job_request = JobRequest(
+        run_request = RunRequest(
             prompt=prompt,
             history=[],
             user_id="hardcoded_user_later_take_it_from_context",
         )
-        created_job = await self.job_store.create_job(
-            job_request=job_request,
+        created_run = await self.run_store.create_run(
+            run_request=run_request,
         )
-        await self.job_store.mark_enqueued(created_job.id)
-        await self.job_signal_queue.notify()
-        return created_job
+        await self.run_store.mark_enqueued(created_run.id)
+        await self.run_signal_queue.notify()
+        return created_run
 
-    async def get_job(self, job_id: UUID) -> JobStatus:
+    async def get_run(self, run_id: UUID) -> RunStatus:
         """
-        Retrieve the job's status from the job store.
+        Retrieve the run's status from the run store.
 
-        :param job_id:
-        :return: JobStatus
-        :raises: JobNotFoundError
+        :param run_id:
+        :return: RunStatus
+        :raises: RunNotFoundError
         """
-        job_status = await self.job_store.get_status(job_id=job_id)
-        return job_status
+        run_status = await self.run_store.get_status(run_id=run_id)
+        return run_status
 
-    async def cancel_job(self, job_id: UUID) -> bool:
+    async def cancel_run(self, run_id: UUID) -> bool:
         """
-        Mark the job as canceled, notify the workers when the job state needs transition.
+        Mark the run as canceled, notify the workers when the run state needs transition.
 
-        :param job_id:
+        :param run_id:
         :return:
         TODO: return proper domain objects instead of bool if needed
         """
-        is_cancelled = await self.job_store.request_cancellation(job_id=job_id)
+        is_cancelled = await self.run_store.request_cancellation(run_id=run_id)
         if is_cancelled:
-            await self.job_signal_queue.notify()
+            await self.run_signal_queue.notify()
 
         return is_cancelled
 
-    async def get_events(self, job_id: UUID, after_sequence: int | None = None) -> list[JobEvent]:
+    async def get_events(self, run_id: UUID, after_sequence: int | None = None) -> list[RunEvent]:
         """
-        Retrieve events for a job from the job store's event log.
+        Retrieve events for a run from the run store's event log.
 
-        :param job_id: The job ID
+        :param run_id: The run ID
         :param after_sequence: Optional sequence number to filter events after
-        :return: List of job events
-        :raises: JobNotFoundError if the job is not found
+        :return: List of run events
+        :raises: RunNotFoundError if the run is not found
         :raises: ValueError if event log is not available
         """
-        return await self.job_store.get_events(job_id=job_id, after_sequence=after_sequence)
+        return await self.run_store.get_events(run_id=run_id, after_sequence=after_sequence)

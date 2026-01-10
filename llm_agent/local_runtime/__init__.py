@@ -1,7 +1,7 @@
 """
 Local, in-process runtime infrastructure enabling the API and worker to cooperate within a single Python process.
 
-This allows you to run the job orchestration and job execution locally
+This allows you to run the run orchestration and run execution locally
 without spinning up external infrastructure
 
 - It makes the scope explicit

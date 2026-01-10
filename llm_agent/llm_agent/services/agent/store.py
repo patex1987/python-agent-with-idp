@@ -3,94 +3,108 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import UUID
 
-from llm_agent.domain.agent.jobs.claim import ClaimedJob
-from llm_agent.domain.agent.jobs.request import JobRequest
-from llm_agent.domain.agent.jobs.status import JobStatus
-from llm_agent.domain.agent.jobs.event import JobEvent
+from llm_agent.domain.agent.runs.claim import ClaimedRun
+from llm_agent.domain.agent.runs.request import RunRequest
+from llm_agent.domain.agent.runs.status import RunStatus
+from llm_agent.domain.agent.runs.event import RunEvent
 
 
-class JobIntakeStore(Protocol):
+class RunIntakeStore(Protocol):
     """
-    TODO: rename to JobControlPlaneStore
-    """
-    async def create_job(self, job_request: JobRequest) -> JobStatus: ...
+    Run store interface for the API/intake side.
 
-    async def get_status(self, job_id: UUID) -> JobStatus:
+    TODO: rename to RunControlPlaneStore
+    """
+
+    async def create_run(self, run_request: RunRequest) -> RunStatus: ...
+
+    async def get_status(self, run_id: UUID) -> RunStatus:
         """
-        Read only view of the current job status.
+        Read only view of the current run status.
 
-        :param job_id:
+        :param run_id:
         :return:
-        :raise JobNotFoundError: when the job is not found in the store
+        :raise RunNotFoundError: when the run is not found in the store
         """
         ...
 
-    async def mark_enqueued(self, job_id: UUID) -> None: ...
+    async def mark_enqueued(self, run_id: UUID) -> None: ...
 
-    async def mark_cancelled(self, job_id: UUID) -> bool:
+    async def mark_cancelled(self, run_id: UUID) -> bool:
         """
-        Mark job as canceled.
+        Mark run as canceled.
 
         Returns True if state was changed, False if already terminal.
         """
         ...
 
-    async def request_cancellation(self, job_id: UUID) -> bool:
+    async def request_cancellation(self, run_id: UUID) -> bool:
         """
-        User expresses an intent to cancel the job.
+        User expresses an intent to cancel the run.
 
-        :param job_id:
+        :param run_id:
         :return:
         """
 
+    async def get_events(self, run_id: UUID, *, after_sequence: int | None = None) -> list[RunEvent]:
+        """
+        Retrieve events for a run from the event log.
 
-class JobProcessingStore(Protocol):
+        :param run_id: The run ID
+        :param after_sequence: Optional sequence number to filter events after
+        :return: List of run events
+        :raises: RunNotFoundError if the run is not found
+        :raises: ValueError if event log is not available
+        """
+        ...
+
+
+class RunProcessingStore(Protocol):
     """
-    Job store interface for the processing / consumer side
+    Run store interface for the processing / consumer side
 
-    - Only JobProcessingStore mutates RUNNING / TIMED_OUT / RETRYING
+    - Only RunProcessingStore mutates RUNNING / TIMED_OUT / RETRYING
     - Workers never set RUNNING directly, it can be set only as part
-        of the job claiming
+        of the run claiming
 
     Notes: never expose publicly setting the state to running
-    TODO: rename to JobWorkerStore
     """
 
-    async def claim_job(self, worker_id: str) -> ClaimedJob | None: ...
+    async def claim_run(self, worker_id: str) -> ClaimedRun | None: ...
 
-    async def set_succeeded(self, job_id: UUID, result: dict) -> None: ...
+    async def set_succeeded(self, run_id: UUID, result: dict) -> None: ...
 
-    async def set_failed(self, job_id: UUID, error: str) -> None: ...
+    async def set_failed(self, run_id: UUID, error: str) -> None: ...
 
-    async def set_cancelled(self, job_id: UUID) -> None:
+    async def set_cancelled(self, run_id: UUID) -> None:
         """
-        Sets the job status to cancelled.
+        Sets the run status to cancelled.
 
         Note: this is not about the intent but setting the actual status.
-        :param job_id:
+        :param run_id:
         :return:
         """
         ...
 
-    async def append_event(self, evt: JobEvent) -> None: ...
+    async def append_event(self, evt: RunEvent) -> None: ...
 
-    async def heartbeat(self, job_id: UUID, worker_id: str) -> JobStatus:
+    async def heartbeat(self, run_id: UUID, worker_id: str) -> RunStatus:
         """
-        Extend the expiration time of a running job claimed by a given worker.
+        Extend the expiration time of a running run claimed by a given worker.
 
-        :param job_id:
+        :param run_id:
         :param worker_id:
         :return:
-        :raises: JobLeaseLostError - when the job is claimed by a different worker
+        :raises: RunLeaseLostError - when the run is claimed by a different worker
         """
         ...
 
-    async def get_status(self, job_id: UUID) -> JobStatus:
+    async def get_status(self, run_id: UUID) -> RunStatus:
         """
-        Read only view of the current job status.
+        Read only view of the current run status.
 
-        :param job_id:
+        :param run_id:
         :return:
-        :raise JobNotFoundError: when the job is not found in the store
+        :raise RunNotFoundError: when the run is not found in the store
         """
         ...

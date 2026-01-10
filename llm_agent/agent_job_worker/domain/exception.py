@@ -1,2 +1,0 @@
-class JobLeaseLostError(Exception):
-    pass

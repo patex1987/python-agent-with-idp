@@ -4,59 +4,59 @@ from fastapi import APIRouter, Query
 from uuid import UUID
 
 from llm_agent.api.http.v1.dto.agent_prompt import AgentPromptDto
-from llm_agent.api.http.v1.dto.cancelled_job import CancelJobResponseDto
-from llm_agent.api.http.v1.dto.created_job import CreatedJobDto
-from llm_agent.api.http.v1.dto.job import JobDto
-from llm_agent.api.http.v1.dto.job_event import JobEventDto
-from llm_agent.api.http.v1.mappers.created_job import CreatedJobV1Mapper
-from llm_agent.api.http.v1.mappers.job import JobV1Mapper
-from llm_agent.api.http.v1.mappers.job_event import JobEventV1Mapper
-from llm_agent.domain.agent.jobs.exception import JobNotFoundError
-from llm_agent.services.agent.orchestrator import BackendJobOrchestrationService
-from llm_agent.services.agent.queue import JobSignalQueue
-from llm_agent.services.agent.store import JobIntakeStore
+from llm_agent.api.http.v1.dto.cancelled_run import CancelRunResponseDto
+from llm_agent.api.http.v1.dto.created_run import CreatedRunDto
+from llm_agent.api.http.v1.dto.run import RunDto
+from llm_agent.api.http.v1.dto.run_event import RunEventDto
+from llm_agent.api.http.v1.mappers.created_run import CreatedRunV1Mapper
+from llm_agent.api.http.v1.mappers.run import RunV1Mapper
+from llm_agent.api.http.v1.mappers.run_event import RunEventV1Mapper
+from llm_agent.domain.agent.runs.exception import RunNotFoundError
+from llm_agent.services.agent.orchestrator import BackendRunOrchestrationService
+from llm_agent.services.agent.queue import RunSignalQueue
+from llm_agent.services.agent.store import RunIntakeStore
 
 agent_router = APIRouter()
 
 
-def get_job_service(services: svcs.fastapi.DepContainer) -> BackendJobOrchestrationService:
+def get_run_service(services: svcs.fastapi.DepContainer) -> BackendRunOrchestrationService:
     """
-    Get the job orchestration service.
+    Get the run orchestration service.
     """
-    return BackendJobOrchestrationService(
-        job_store=services.get(JobIntakeStore),
-        job_signal_queue=services.get(JobSignalQueue),
+    return BackendRunOrchestrationService(
+        run_store=services.get(RunIntakeStore),
+        run_signal_queue=services.get(RunSignalQueue),
     )
 
 
 @agent_router.post(
-    "/jobs",
-    response_model=CreatedJobDto,
-    summary="Create an agent job",
-    description="Creates a new agent job to execute the provided prompt.",
+    "/runs",
+    response_model=CreatedRunDto,
+    summary="Create an agent run",
+    description="Creates a new agent run to execute the provided prompt.",
 )
-async def create_agent_job(
+async def create_agent_run(
     agent_prompt: AgentPromptDto,
     request: fastapi.Request,
-    job_service: BackendJobOrchestrationService = fastapi.Depends(get_job_service),
+    run_service: BackendRunOrchestrationService = fastapi.Depends(get_run_service),
 ):
-    created_job_status = await job_service.create_job(agent_prompt.prompt)
-    created_job_dto = CreatedJobV1Mapper.to_dto(created_job_status)
-    return created_job_dto
+    created_run_status = await run_service.create_run(agent_prompt.prompt)
+    created_run_dto = CreatedRunV1Mapper.to_dto(created_run_status)
+    return created_run_dto
 
 
 @agent_router.get(
-    "/jobs/{job_id}",
-    response_model=JobDto,
-    summary="Get job state",
+    "/runs/{run_id}",
+    response_model=RunDto,
+    summary="Get run state",
     description=(
-        "Retrieves the complete state of an agent job"
+        "Retrieves the complete state of an agent run"
         "Possible status values: CREATED, ENQUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, TIMED_OUT, RETRYING. "
-        "Returns 404 if the job is not found."
+        "Returns 404 if the run is not found."
     ),
     responses={
         200: {
-            "description": "Job state retrieved successfully",
+            "description": "Run state retrieved successfully",
             "content": {
                 "application/json": {
                     "example": {
@@ -70,32 +70,32 @@ async def create_agent_job(
             },
         },
         404: {
-            "description": "Job not found",
+            "description": "Run not found",
             "content": {
-                "application/json": {"example": {"detail": "Job 123e4567-e89b-12d3-a456-426614174000 not found"}}
+                "application/json": {"example": {"detail": "Run 123e4567-e89b-12d3-a456-426614174000 not found"}}
             },
         },
     },
 )
-async def get_agent_job(
-    job_id: UUID,
+async def get_agent_run(
+    run_id: UUID,
     request: fastapi.Request,
-    job_service: BackendJobOrchestrationService = fastapi.Depends(get_job_service),
+    run_service: BackendRunOrchestrationService = fastapi.Depends(get_run_service),
 ):
     try:
-        job_status = await job_service.get_job(job_id)
-        return JobV1Mapper.to_dto(job_status)
-    except JobNotFoundError as exc:
+        run_status = await run_service.get_run(run_id)
+        return RunV1Mapper.to_dto(run_status)
+    except RunNotFoundError as exc:
         raise fastapi.HTTPException(status_code=404, detail=str(exc))
 
 
 @agent_router.post(
-    "/jobs/{job_id}/cancel",
-    response_model=CancelJobResponseDto,
-    summary="Request job cancellation",
+    "/runs/{run_id}/cancel",
+    response_model=CancelRunResponseDto,
+    summary="Request run cancellation",
     description=(
-        "Requests cancellation of a job. This sets the cancellation intent flag. "
-        "If a worker is executing the job, it will discover the cancellation at the next "
+        "Requests cancellation of a run. This sets the cancellation intent flag. "
+        "If a worker is executing the run, it will discover the cancellation at the next "
         "checkpoint and exit cooperatively.\n\n"
         "Important: Termination is not immediate. There are two sources of delay:\n"
         "1. Detection delay: Up to the heartbeat interval (default: 5 seconds) before "
@@ -108,67 +108,67 @@ async def get_agent_job(
     ),
     responses={
         200: {
-            "description": "Cancellation requested or job already terminal",
+            "description": "Cancellation requested or run already terminal",
             "content": {
                 "application/json": {
                     "examples": {
                         "cancel_requested": {
                             "value": {
-                                "job_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "run_id": "123e4567-e89b-12d3-a456-426614174000",
                                 "status": "cancel_requested",
-                                "message": "Job cancellation requested",
+                                "message": "Run cancellation requested",
                             }
                         },
                         "already_terminal": {
                             "value": {
-                                "job_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "run_id": "123e4567-e89b-12d3-a456-426614174000",
                                 "status": "already_terminal",
-                                "message": "Job already in terminal state",
+                                "message": "Run already in terminal state",
                             }
                         },
                     }
                 }
             },
         },
-        404: {"description": "Job not found"},
+        404: {"description": "Run not found"},
     },
 )
-async def cancel_agent_job(
-    job_id: UUID,
+async def cancel_agent_run(
+    run_id: UUID,
     request: fastapi.Request,
-    job_service: BackendJobOrchestrationService = fastapi.Depends(get_job_service),
+    run_service: BackendRunOrchestrationService = fastapi.Depends(get_run_service),
 ):
     try:
-        was_cancelled = await job_service.cancel_job(job_id)
+        was_cancelled = await run_service.cancel_run(run_id)
         if was_cancelled:
-            return CancelJobResponseDto(
-                job_id=job_id,
+            return CancelRunResponseDto(
+                run_id=run_id,
                 status="cancel_requested",
-                message="Job cancellation requested",
+                message="Run cancellation requested",
             )
         else:
-            return CancelJobResponseDto(
-                job_id=job_id,
+            return CancelRunResponseDto(
+                run_id=run_id,
                 status="already_terminal",
-                message="Job already in terminal state or cancel is requested",
+                message="Run already in terminal state or cancel is requested",
             )
-    except JobNotFoundError as exc:
+    except RunNotFoundError as exc:
         raise fastapi.HTTPException(status_code=404, detail=str(exc))
 
 
 @agent_router.get(
-    "/jobs/{job_id}/events",
-    response_model=list[JobEventDto],
-    summary="List job events",
+    "/runs/{run_id}/events",
+    response_model=list[RunEventDto],
+    summary="List run events",
     description=(
-        "Retrieves the event logs for a job, optionally filtered by sequence number. "
+        "Retrieves the event logs for a run, optionally filtered by sequence number. "
         "Events are returned in chronological order (by sequence number). "
         "Use the 'after' query parameter to paginate through events.\n\n"
-        "Returns 404 if the job is not found. Returns 400 if event log is not available."
+        "Returns 404 if the run is not found. Returns 400 if event log is not available."
     ),
     responses={
         200: {
-            "description": "Job events retrieved successfully",
+            "description": "Run events retrieved successfully",
             "content": {
                 "application/json": {
                     "example": [
@@ -193,24 +193,24 @@ async def cancel_agent_job(
             "content": {"application/json": {"example": {"detail": "Event log is not available"}}},
         },
         404: {
-            "description": "Job not found",
+            "description": "Run not found",
             "content": {
-                "application/json": {"example": {"detail": "Job 123e4567-e89b-12d3-a456-426614174000 not found"}}
+                "application/json": {"example": {"detail": "Run 123e4567-e89b-12d3-a456-426614174000 not found"}}
             },
         },
     },
 )
-async def get_agent_job_events(
-    job_id: UUID,
+async def get_agent_run_events(
+    run_id: UUID,
     after: int | None = Query(None, description="Return events after this sequence number"),
     request: fastapi.Request = None,
-    job_service: BackendJobOrchestrationService = fastapi.Depends(get_job_service),
+    run_service: BackendRunOrchestrationService = fastapi.Depends(get_run_service),
 ):
     try:
-        await job_service.get_job(job_id)
-        events = await job_service.get_events(job_id, after_sequence=after)
-        return [JobEventV1Mapper.to_dto(event) for event in events]
-    except JobNotFoundError as exc:
+        await run_service.get_run(run_id)
+        events = await run_service.get_events(run_id, after_sequence=after)
+        return [RunEventV1Mapper.to_dto(event) for event in events]
+    except RunNotFoundError as exc:
         raise fastapi.HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
         raise fastapi.HTTPException(status_code=400, detail=str(exc))
