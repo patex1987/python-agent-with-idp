@@ -13,7 +13,7 @@ from llm_agent.api.http.v1.mappers.run import RunV1Mapper
 from llm_agent.api.http.v1.mappers.run_event import RunEventV1Mapper
 from llm_agent.domain.agent.runs.exception import RunNotFoundError
 from llm_agent.services.agent.orchestrator import BackendRunOrchestrationService
-from llm_agent.services.agent.queue import RunSignalQueue
+from contracts.services.queue import RunSignalQueue
 from llm_agent.services.agent.store import RunIntakeStore
 
 agent_router = APIRouter()

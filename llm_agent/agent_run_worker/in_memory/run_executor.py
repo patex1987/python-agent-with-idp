@@ -5,8 +5,8 @@ from uuid import UUID
 
 import structlog
 
-from llm_agent.domain.agent.runs.execution_context import RunExecutionContext
-from llm_agent.services.agent.store import RunProcessingStore
+from agent_run_worker.domain.runs.execution_context import RunExecutionContext
+from agent_run_worker.services.runs.processing_store import RunProcessingStore
 
 logger = structlog.get_logger(__name__)
 

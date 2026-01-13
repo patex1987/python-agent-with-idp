@@ -8,12 +8,13 @@ import structlog
 import svcs
 from starlette.testclient import TestClient
 
-from agent_run_worker.in_memory.consumer import Consumer, InMemoryConsumer
+from agent_run_worker.in_memory.consumer import InMemoryConsumer
+from contracts.services.consumer import Consumer
 from agent_run_worker.in_memory.run_executor import AgentRunExecutor
 from llm_agent.di.fastapi_composition import create_app_with_selected_di
-from llm_agent.domain.agent.runs.execution_context import RunExecutionContext
-from llm_agent.services.agent.queue import RunSignalQueue
-from llm_agent.services.agent.store import RunProcessingStore
+from agent_run_worker.domain.runs.execution_context import RunExecutionContext
+from contracts.services.queue import RunSignalQueue
+from agent_run_worker.services.runs.processing_store import RunProcessingStore
 from local_runtime.provider import create_default_in_memory_runtime, InMemoryRuntime
 from tests.execution_clients.status_poller import poll_run_status, sync_wait_until
 from tests.fake_implementations.agent_run_worker.di.registrars.consumer import ConsumerRegistrar

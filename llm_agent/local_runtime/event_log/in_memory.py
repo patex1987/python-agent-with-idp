@@ -2,8 +2,8 @@ import asyncio
 from collections import deque
 from uuid import UUID
 
-from llm_agent.domain.agent.runs.event import RunEvent, get_current_utc_timestamp
-from llm_agent.services.agent.event_log import RunEventLog
+from contracts.domain.runs.event import RunEvent, get_current_utc_timestamp
+from contracts.services.event_log import RunEventLog
 
 
 class InMemoryRunEventLog(RunEventLog):

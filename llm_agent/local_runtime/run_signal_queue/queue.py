@@ -1,6 +1,6 @@
 import asyncio
 
-from llm_agent.services.agent.queue import RunSignalQueue
+from contracts.services.queue import RunSignalQueue
 
 
 class InMemoryRunSignalQueue(RunSignalQueue):

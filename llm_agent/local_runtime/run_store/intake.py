@@ -2,12 +2,12 @@ import asyncio
 import uuid
 from uuid import UUID
 
-from llm_agent.domain.agent.runs.event import RunEvent
+from contracts.domain.runs.event import RunEvent
 from llm_agent.domain.agent.runs.exception import RunNotFoundError
 from llm_agent.domain.agent.runs.request import RunRequest
-from llm_agent.domain.agent.runs.status import RunStatus
-from llm_agent.domain.agent.runs.status_code import RunStatusCode, TERMINAL_RUN_STATUSES
-from llm_agent.services.agent.event_log import RunEventLog
+from contracts.domain.runs.status import RunStatus
+from contracts.domain.runs.status_code import RunStatusCode, TERMINAL_RUN_STATUSES
+from contracts.services.event_log import RunEventLog
 from llm_agent.services.agent.store import RunIntakeStore
 from llm_agent.services.agent.transition_policy import RunTransitionPolicy
 

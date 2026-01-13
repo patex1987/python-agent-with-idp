@@ -1,5 +1,5 @@
 from llm_agent.api.http.v1.dto.run import RunDto
-from llm_agent.domain.agent.runs.status import RunStatus
+from contracts.domain.runs.status import RunStatus
 
 
 class RunV1Mapper:

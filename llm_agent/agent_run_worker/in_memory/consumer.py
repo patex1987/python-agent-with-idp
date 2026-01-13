@@ -1,26 +1,14 @@
-from typing import Protocol
-
 import structlog
 
 from agent_run_worker.in_memory.run_executor import AgentRunExecutor
 from agent_run_worker.in_memory.run_lease import RunLeaseScope
-from llm_agent.domain.agent.runs.claim import ClaimedRun
-from llm_agent.domain.agent.runs.execution_context import RunExecutionContext
-from llm_agent.services.agent.queue import RunSignalQueue
-from llm_agent.services.agent.store import RunProcessingStore
+from agent_run_worker.domain.runs.claim import ClaimedRun
+from agent_run_worker.domain.runs.execution_context import RunExecutionContext
+from contracts.services.consumer import Consumer
+from contracts.services.queue import RunSignalQueue
+from agent_run_worker.services.runs.processing_store import RunProcessingStore
 
 logger = structlog.get_logger(__name__)
-
-
-class Consumer(Protocol):
-    async def consume_and_execute_loop(self):
-        """
-        The main entrypoint / workhorse on the consumer side.
-        :return:
-        """
-        ...
-
-    async def shutdown_execution(self): ...
 
 
 class InMemoryConsumer(Consumer):

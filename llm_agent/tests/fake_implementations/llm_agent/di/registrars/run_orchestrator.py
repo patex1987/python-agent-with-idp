@@ -3,7 +3,7 @@ import svcs
 from llm_agent.di.registrars.base import Registrar
 
 from llm_agent.services.agent.orchestrator import BackendRunOrchestrationService
-from llm_agent.services.agent.queue import RunSignalQueue
+from contracts.services.queue import RunSignalQueue
 from llm_agent.services.agent.store import RunIntakeStore
 from llm_agent.services.agent.transition_policy import RunTransitionPolicy
 from local_runtime.provider import InMemoryRuntime

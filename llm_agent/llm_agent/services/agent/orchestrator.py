@@ -1,9 +1,9 @@
 from uuid import UUID
 
-from llm_agent.domain.agent.runs.event import RunEvent
+from contracts.domain.runs.event import RunEvent
 from llm_agent.domain.agent.runs.request import RunRequest
-from llm_agent.domain.agent.runs.status import RunStatus
-from llm_agent.services.agent.queue import RunSignalQueue
+from contracts.domain.runs.status import RunStatus
+from contracts.services.queue import RunSignalQueue
 from llm_agent.services.agent.store import RunIntakeStore
 
 

@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 
-from agent_run_worker.in_memory.consumer import Consumer
+from contracts.services.consumer import Consumer
 from llm_agent.domain.infrastructure_setup import InfrastructureSetup
 
 

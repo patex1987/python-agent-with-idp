@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import dataclass
 
-from llm_agent.domain.agent.runs.status import RunStatus
+from contracts.domain.runs.status import RunStatus
 from local_runtime.event_log.in_memory import InMemoryRunEventLog
 from local_runtime.run_signal_queue.queue import InMemoryRunSignalQueue
 

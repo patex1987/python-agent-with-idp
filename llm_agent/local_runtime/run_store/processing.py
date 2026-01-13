@@ -5,14 +5,14 @@ from uuid import UUID
 import structlog
 
 from agent_run_worker.domain.exception import RunLeaseLostError
-from llm_agent.domain.agent.runs.claim import ClaimedRun
-from llm_agent.domain.agent.runs.event import RunEvent
+from agent_run_worker.domain.runs.claim import ClaimedRun
+from contracts.domain.runs.event import RunEvent
 from llm_agent.domain.agent.runs.exception import RunNotFoundError
-from llm_agent.domain.agent.runs.status import RunStatus
-from llm_agent.domain.agent.runs.status_code import RunStatusCode
+from contracts.domain.runs.status import RunStatus
+from contracts.domain.runs.status_code import RunStatusCode
 from llm_agent.domain.agent.runs.transition_request import TransitionRequestParams, get_value_or_fallback
-from llm_agent.services.agent.event_log import RunEventLog
-from llm_agent.services.agent.store import RunProcessingStore
+from contracts.services.event_log import RunEventLog
+from agent_run_worker.services.runs.processing_store import RunProcessingStore
 from llm_agent.services.agent.transition_policy import RunTransitionPolicy
 
 logger = structlog.getLogger(__name__)

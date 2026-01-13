@@ -1,5 +1,5 @@
 from llm_agent.api.http.v1.dto.run_event import RunEventDto
-from llm_agent.domain.agent.runs.event import RunEvent
+from contracts.domain.runs.event import RunEvent
 
 
 class RunEventV1Mapper:

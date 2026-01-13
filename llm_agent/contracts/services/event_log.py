@@ -1,7 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
-from llm_agent.domain.agent.runs.event import RunEvent
+from contracts.domain.runs.event import RunEvent
 
 
 class RunEventLog(Protocol):

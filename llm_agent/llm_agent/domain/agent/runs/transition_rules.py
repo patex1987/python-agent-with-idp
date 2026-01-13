@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from llm_agent.domain.agent.runs.status_code import RunStatusCode
+from contracts.domain.runs.status_code import RunStatusCode
 
 DEFAULT_TRANSITION_RULES: dict[RunStatusCode, tuple[RunStatusCode]] = {
     RunStatusCode.CREATED: (RunStatusCode.ENQUEUED, RunStatusCode.CANCELLED),

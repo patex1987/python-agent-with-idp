@@ -2,12 +2,13 @@ import uuid
 
 import svcs
 
-from agent_run_worker.in_memory.consumer import Consumer, InMemoryConsumer
+from agent_run_worker.in_memory.consumer import InMemoryConsumer
+from contracts.services.consumer import Consumer
 from agent_run_worker.in_memory.run_executor import AgentRunExecutor, RandomSleepRunExecutor
 from llm_agent.di.registrars.base import Registrar
 from local_runtime.run_store.processing import InMemoryRunProcessingStore
-from llm_agent.services.agent.queue import RunSignalQueue
-from llm_agent.services.agent.store import RunProcessingStore
+from contracts.services.queue import RunSignalQueue
+from agent_run_worker.services.runs.processing_store import RunProcessingStore
 from llm_agent.services.agent.transition_policy import RunTransitionPolicy
 from local_runtime.provider import InMemoryRuntime
 

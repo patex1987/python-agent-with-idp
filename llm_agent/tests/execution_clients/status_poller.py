@@ -5,7 +5,7 @@ from typing import Any
 from httpx import AsyncClient
 from starlette.testclient import TestClient
 
-from llm_agent.domain.agent.runs.status_code import TERMINAL_RUN_STATUSES
+from contracts.domain.runs.status_code import TERMINAL_RUN_STATUSES
 
 
 def poll_run_status(

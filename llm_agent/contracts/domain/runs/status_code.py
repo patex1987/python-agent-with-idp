@@ -37,16 +37,6 @@ class RunStatusCode(Enum):
         Worker lost lease
         Treated differently from FAILED
     RETRYING
-
-    Allowed state transitions:
-    CREATED    → ENQUEUED
-    ENQUEUED   → RUNNING
-    RUNNING    → SUCCEEDED
-    RUNNING    → FAILED
-    RUNNING    → CANCELLED
-    RUNNING    → TIMED_OUT
-    TIMED_OUT  → RETRYING
-    RETRYING   → ENQUEUED
     """
 
     CREATED = 1

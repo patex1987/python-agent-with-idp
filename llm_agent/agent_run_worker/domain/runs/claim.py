@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from llm_agent.domain.agent.runs.status import RunStatus
+from contracts.domain.runs.status import RunStatus
 
 
 @dataclass(frozen=True)

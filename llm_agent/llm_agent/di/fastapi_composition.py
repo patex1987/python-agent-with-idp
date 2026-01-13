@@ -5,7 +5,7 @@ import fastapi
 import svcs
 from fastapi import FastAPI
 
-from agent_run_worker.in_memory.consumer import Consumer
+from contracts.services.consumer import Consumer
 from llm_agent.app import create_app, register_middlewares
 from llm_agent.di.app_wide_registrar import ApplicationDIConfig
 from llm_agent.di.provider import RegistrarProvider

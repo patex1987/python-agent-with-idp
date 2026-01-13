@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from llm_agent.domain.agent.runs.status_code import RunStatusCode
+from contracts.domain.runs.status_code import RunStatusCode
 
 
 @dataclass(frozen=True)

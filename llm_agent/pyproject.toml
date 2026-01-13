@@ -40,3 +40,9 @@ dev = [
 target-version="py312"
 line-length=120
 indent-width=4
+
+# TODO
+    #One important packaging gotcha (for later extraction)
+    #Right now your wheel build includes only packages = ["llm_agent"] (from llm_agent/pyproject.toml).
+    #So anything not under the llm_agent/llm_agent/ package tree won’t be shipped. Keeping contracts under llm_agent/contracts/...
+    #avoids surprises and makes later extraction a mechanical move.

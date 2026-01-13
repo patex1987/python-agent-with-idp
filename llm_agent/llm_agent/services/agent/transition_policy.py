@@ -1,6 +1,6 @@
 from llm_agent.domain.agent.runs.transition_rules import DEFAULT_TRANSITION_RULES
-from llm_agent.domain.agent.runs.status_code import RunStatusCode
-from llm_agent.domain.agent.runs.status import RunStatus
+from contracts.domain.runs.status_code import RunStatusCode
+from contracts.domain.runs.status import RunStatus
 
 
 class RunTransitionPolicy:
