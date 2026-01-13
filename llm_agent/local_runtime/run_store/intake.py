@@ -25,6 +25,7 @@ class InMemoryRunIntakeStore(RunIntakeStore):
             to share with the worker
         :param internal_event_logs: something like transactional logs for
             events (append only)
+        TODO(event-sourcing): treat `_runs` as a projection/cache and derive `RunStatus` by folding the append-only `RunEventLog`.
         """
         self._runs = internal_run_storage
         self._events = internal_event_logs
@@ -148,4 +149,3 @@ class InMemoryRunIntakeStore(RunIntakeStore):
         if run_id not in self._runs:
             raise RunNotFoundError(run_id=str(run_id))
         return await self._events.list(run_id=run_id, after_sequence=after_sequence)
-

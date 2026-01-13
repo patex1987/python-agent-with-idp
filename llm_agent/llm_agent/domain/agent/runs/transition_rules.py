@@ -17,4 +17,3 @@ DEFAULT_TRANSITION_RULES: dict[RunStatusCode, tuple[RunStatusCode]] = {
     RunStatusCode.TIMED_OUT: (RunStatusCode.RETRYING,),
     RunStatusCode.RETRYING: (RunStatusCode.ENQUEUED,),
 }
-

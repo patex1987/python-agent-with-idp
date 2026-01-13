@@ -8,4 +8,3 @@ class CreatedRunV1Mapper:
     @classmethod
     def to_dto(cls, run_status: RunStatus) -> CreatedRunDto:
         return CreatedRunDto(id=run_status.id)
-

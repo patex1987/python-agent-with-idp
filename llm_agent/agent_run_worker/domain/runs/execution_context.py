@@ -33,4 +33,3 @@ class RunExecutionContext:
         :return: True if cancellation has been requested, False otherwise
         """
         return self.cancellation_event.is_set()
-

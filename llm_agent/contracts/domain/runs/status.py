@@ -23,4 +23,3 @@ class RunStatus:
 
     # intent-driven flags
     cancel_requested: bool = False
-

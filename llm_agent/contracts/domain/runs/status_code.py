@@ -50,4 +50,3 @@ class RunStatusCode(Enum):
 
 
 TERMINAL_RUN_STATUSES = {RunStatusCode.SUCCEEDED, RunStatusCode.FAILED, RunStatusCode.CANCELLED}
-

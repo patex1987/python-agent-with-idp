@@ -12,4 +12,3 @@ class RunRequest:
     prompt: str
     history: list[str]
     user_id: str
-

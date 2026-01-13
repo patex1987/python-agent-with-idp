@@ -15,4 +15,3 @@ class RunEventDto(BaseModel):
     event_type: str
     payload: dict[str, Any]
     timestamp_utc: datetime.datetime
-

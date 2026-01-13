@@ -219,4 +219,3 @@ class TestCanceledRunExecution:
         assert run_status_response["status"] == "SUCCEEDED"
         assert signal_controlled_executor._started.is_set()
         assert signal_controlled_executor._finished.is_set()
-

@@ -169,4 +169,3 @@ class InMemoryConsumer(Consumer):
             self._current_run_execution_ctx.cancel()
 
         await self.run_signal_queue.notify()
-

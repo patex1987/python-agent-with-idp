@@ -43,4 +43,3 @@ class InMemoryRunSignalQueue(RunSignalQueue):
         Notify the workers there is a new run.
         """
         self._event.set()
-

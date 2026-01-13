@@ -140,6 +140,8 @@ This works with:
 * Temporal activities
 * DB jobs
 
+**Important:** See "Idempotency" section below for critical TODO about implementing idempotency at the tool layer. This is a foundational requirement that enables safe retries and recovery, regardless of orchestrator choice.
+
 ## HITL
 
 * Run enters `WAITING_HITL`
@@ -234,6 +236,25 @@ That’s fine.
 ### Tool calls
 
 Make every tool call have a `call_id` and treat tool execution as idempotent w.r.t. that call id.
+
+**TODO: Implement idempotency at the tool layer (CRITICAL)**
+
+Idempotency is a **game changer for agentic apps** and must be implemented at the tool layer, **regardless of orchestrator choice** (Temporal, DB-backed, in-memory, etc.).
+
+**Why this matters:**
+- Worker crashes and retries will re-execute tool calls
+- LangGraph checkpoints + Temporal retries = tool calls can be executed multiple times
+- Without idempotency: duplicate API calls, duplicate database writes, duplicate file operations, etc.
+- With idempotency: safe retries, safe resumption from checkpoints, safe Temporal activity retries
+
+**Implementation requirement:**
+- Every tool call MUST have a unique `call_id` (UUID)
+- Tool execution MUST be idempotent: calling the same tool with the same `call_id` + args multiple times produces the same result
+- Store tool call results keyed by `call_id` (e.g., in RunEventLog or dedicated cache/store)
+- Before executing a tool, check if `call_id` was already executed → return cached result
+- This is independent of LangGraph implementation - implement idempotency as part of the tool execution infrastructure
+
+**Key principle:** Idempotency is an architectural requirement at the tool layer, not an optional feature. It enables safe retries and recovery regardless of which orchestration system you use.
 
 Great question — this is exactly the right moment to align the concepts cleanly.
 

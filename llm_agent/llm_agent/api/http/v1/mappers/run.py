@@ -14,4 +14,3 @@ class RunV1Mapper:
             error=run_status.error,
             cancel_requested=run_status.cancel_requested,
         )
-

@@ -28,4 +28,3 @@ class TransitionRequestParams:
 def get_value_or_fallback(transition_request_value, run_status_value):
     """Get transition request value if not MISSING, otherwise run status."""
     return transition_request_value if transition_request_value is not UNSET_FIELD else run_status_value
-

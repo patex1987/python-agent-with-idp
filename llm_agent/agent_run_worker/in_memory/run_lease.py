@@ -92,4 +92,3 @@ class RunLeaseScope:
                 break
             except Exception as exc:
                 logger.error("heartbeat failed", run_id=run_id, worker_id=self.worker_id, error=str(exc))
-

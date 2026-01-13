@@ -249,4 +249,3 @@ def has_claim_expired(run_status: RunStatus) -> bool:
 async def get_new_expiration_ts() -> float:
     expiration_unix_ts = datetime.datetime.now(tz=datetime.UTC).timestamp() + 30
     return expiration_unix_ts
-

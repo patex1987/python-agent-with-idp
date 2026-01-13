@@ -56,5 +56,3 @@ class RunIntakeStore(Protocol):
         :raises: ValueError if event log is not available
         """
         ...
-
-

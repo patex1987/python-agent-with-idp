@@ -51,4 +51,3 @@ class ConsumerRegistrar(Registrar):
             run_executor=svcs_container.get(AgentRunExecutor),
             heartbeat_interval_seconds=5,
         )
-

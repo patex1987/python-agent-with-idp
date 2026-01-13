@@ -15,4 +15,3 @@ class ClaimedRun:
     id: UUID
     claim_type: enqueued | running_lost_claim
     run_status: RunStatus
-

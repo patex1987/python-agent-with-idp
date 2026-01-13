@@ -65,4 +65,3 @@ class TestAgentRunOrchestration:
         response_content = poll_run_status(agent_service_client_with_instant_execution, run_id, timeout_seconds=2)
 
         assert response_content["status"] == "SUCCEEDED"
-

@@ -53,4 +53,3 @@ class InMemoryRunOrchestrationRegistrar(Registrar):
         """
         in_memory_run_queue = self._shared_local_infrastructure.run_signal_queue
         return in_memory_run_queue
-

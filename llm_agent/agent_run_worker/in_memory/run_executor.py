@@ -100,4 +100,3 @@ class DummyRunExecutor(AgentRunExecutor):
             return
         logger.info(f"{worker_id}: Running run step", run_id=run_id)
         await asyncio.sleep(0.2)
-

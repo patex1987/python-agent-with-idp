@@ -16,4 +16,3 @@ class RunDto(BaseModel):
     result: dict[str, Any] | None = None
     error: str | None = None
     cancel_requested: bool = False
-

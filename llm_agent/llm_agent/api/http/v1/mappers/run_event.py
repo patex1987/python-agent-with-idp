@@ -13,4 +13,3 @@ class RunEventV1Mapper:
             payload=run_event.payload,
             timestamp_utc=run_event.timestamp_utc,
         )
-

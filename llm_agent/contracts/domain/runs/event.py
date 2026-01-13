@@ -21,4 +21,3 @@ class RunEvent:
 
 def get_current_utc_timestamp() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
-
