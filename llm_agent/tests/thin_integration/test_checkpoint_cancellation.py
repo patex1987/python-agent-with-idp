@@ -55,13 +55,7 @@ class SingleCheckpointExecutor(AgentRunExecutor):
         # Track execution state
         self.execution_cancelled = False
 
-    async def execute(
-        self,
-        run_id: UUID,
-        worker_id: str,
-        run_store: RunProcessingStore,
-        run_execution_ctx: RunExecutionContext,
-    ):
+    async def execute(self, run_id: UUID, worker_id: str, execution_context: RunExecutionContext):
         """
         Execute a single checkpoint with cancellation checks.
 
@@ -78,7 +72,7 @@ class SingleCheckpointExecutor(AgentRunExecutor):
         """
         logger.info(f"{worker_id}: execution started", run_id=run_id)
 
-        if run_execution_ctx.is_cancelled():
+        if execution_context.is_cancelled():
             logger.info(f"{worker_id}: cancellation detected before checkpoint", run_id=run_id)
             self.execution_cancelled = True
             self.execution_stopped.set()
@@ -92,10 +86,8 @@ class SingleCheckpointExecutor(AgentRunExecutor):
         self.checkpoint_work_done.set()
         logger.info(f"{worker_id}: checkpoint work done", run_id=run_id)
 
-        if run_execution_ctx.is_cancelled():
-            # TODO: you can't do it like this
-            run_store._events.append(
-                run_id=run_id,
+        if execution_context.is_cancelled():
+            await execution_context.emit_event(
                 event_type="Checkpoint cancelled",
                 payload={"message": "cancellation detected during checkpoint execution"},
             )
@@ -106,11 +98,9 @@ class SingleCheckpointExecutor(AgentRunExecutor):
             self.execution_cancelled = True
 
         self.checkpoint_completed.set()
-        # TODO: you can't do it like this
-        run_store._events.append(
-            run_id=run_id,
-            event_type="Checkpoint cancelled",
-            payload={"message": "cancellation detected during checkpoint execution"},
+        await execution_context.emit_event(
+            event_type="Checkpoint completed",
+            payload={"message": "checkpoint execution completed"},
         )
         logger.info(f"{worker_id}: checkpoint completed", run_id=run_id)
 
@@ -167,11 +157,12 @@ def single_checkpoint_executor():
 
 
 @pytest.fixture
-def consumer(run_processing_store, run_signal_queue, single_checkpoint_executor):
+def consumer(in_memory_runtime, run_processing_store, run_signal_queue, single_checkpoint_executor):
     """Create consumer with fast heartbeat for quick cancellation detection."""
     return InMemoryConsumer(
         run_store=run_processing_store,
         run_signal_queue=run_signal_queue,
+        event_log=in_memory_runtime.internal_event_logs,
         worker_id="test_worker",
         run_executor=single_checkpoint_executor,
         heartbeat_interval_seconds=0.1,  # Fast heartbeat for tests
@@ -192,6 +183,7 @@ class TestCheckpointCompletionDuringCancellation:
     @pytest.mark.asyncio
     async def test_checkpoint_completes_even_when_cancelled_during_execution(
         self,
+        in_memory_runtime,
         run_intake_store,
         run_processing_store,
         run_signal_queue,
@@ -238,7 +230,8 @@ class TestCheckpointCompletionDuringCancellation:
             assert final_status.status == RunStatusCode.CANCELLED, "Run should be in CANCELLED status"
 
             print("events in the store")
-            run_events = await run_processing_store._events.list(run_id)
+            event_log = in_memory_runtime.internal_event_logs
+            run_events = await event_log.list(run_id)
             for evt in run_events:
                 print(evt)
 

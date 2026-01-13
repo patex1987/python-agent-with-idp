@@ -11,6 +11,7 @@ from starlette.testclient import TestClient
 from agent_run_worker.in_memory.consumer import InMemoryConsumer
 from contracts.services.consumer import Consumer
 from agent_run_worker.in_memory.run_executor import AgentRunExecutor
+from contracts.services.event_log import RunEventLog
 from llm_agent.di.fastapi_composition import create_app_with_selected_di
 from agent_run_worker.domain.runs.execution_context import RunExecutionContext
 from contracts.services.queue import RunSignalQueue
@@ -38,13 +39,11 @@ class SignalControlledRunExecutor(AgentRunExecutor):
         self._started = asyncio.Event()
         self._finished = asyncio.Event()
 
-    async def execute(
-        self, run_id: UUID, worker_id: str, run_store: RunProcessingStore, run_execution_ctx: RunExecutionContext
-    ):
+    async def execute(self, run_id: UUID, worker_id: str, execution_context: RunExecutionContext):
         self._started.set()
 
         start_task = asyncio.create_task(self.allow_start_processing.wait())
-        cancel_task = asyncio.create_task(run_execution_ctx.cancellation_event.wait())
+        cancel_task = asyncio.create_task(execution_context.cancellation_event.wait())
 
         done, pending = await asyncio.wait(
             {start_task, cancel_task},
@@ -53,12 +52,12 @@ class SignalControlledRunExecutor(AgentRunExecutor):
         for task in pending:
             task.cancel()
 
-        if run_execution_ctx.is_cancelled():
+        if execution_context.is_cancelled():
             logger.warning(f"{worker_id}: run cancelled", run_id=run_id, location="executor")
             return
 
         while not self.allow_finish_processing.is_set():
-            if run_execution_ctx.is_cancelled():
+            if execution_context.is_cancelled():
                 logger.warning(f"{worker_id}: run cancelled", run_id=run_id, location="executor-mid-execution")
                 return
             await asyncio.sleep(0.1)
@@ -82,6 +81,7 @@ class FastConsumerRegistrar(ConsumerRegistrar):
         return InMemoryConsumer(
             run_store=svcs_container.get(RunProcessingStore),
             run_signal_queue=svcs_container.get(RunSignalQueue),
+            event_log=svcs_container.get(RunEventLog),
             worker_id=worker_id,
             run_executor=svcs_container.get(AgentRunExecutor),
             heartbeat_interval_seconds=HEARTBEAT_INTERVAL_SECONDS,

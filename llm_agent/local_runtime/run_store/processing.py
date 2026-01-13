@@ -39,8 +39,9 @@ class InMemoryRunProcessingStore(RunProcessingStore):
 
     async def claim_run(self, worker_id: str) -> ClaimedRun | None:
         """
-        Querying is ineffective, but remember this is an in-memory POC
 
+
+        Querying is ineffective, but remember this is an in-memory POC
         Needs to be atomic to handle concurrency on multiple workers
 
         :param worker_id:

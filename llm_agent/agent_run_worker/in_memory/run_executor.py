@@ -6,20 +6,17 @@ from uuid import UUID
 import structlog
 
 from agent_run_worker.domain.runs.execution_context import RunExecutionContext
-from agent_run_worker.services.runs.processing_store import RunProcessingStore
 
 logger = structlog.get_logger(__name__)
 
 
 class AgentRunExecutor(Protocol):
-    async def execute(
-        self, run_id: UUID, worker_id: str, run_store: RunProcessingStore, run_execution_ctx: RunExecutionContext
-    ):
+    async def execute(self, run_id: UUID, worker_id: str, execution_context: RunExecutionContext):
         """
         Contract for executing agent runs by the consumer.
 
         Cancellation Handling:
-        - Must check run_execution_ctx.is_cancelled() at checkpoints (between steps/operations)
+        - Must check execution_context.is_cancelled() at checkpoints (between steps/operations)
         - When cancellation is detected, return gracefully after completing the current step
         - Do NOT interrupt operations mid-execution - always finish the current step first
         - This ensures atomic operations and prevents partial state or data corruption
@@ -29,19 +26,20 @@ class AgentRunExecutor(Protocol):
         - After completing a step/operation
         - Before any long-running operations
 
-        :param run_id:
-        :param worker_id:
-        :param run_store: Todo: expose the event log instead of the run store only
-        :param run_execution_ctx: Context for checking cancellation status at checkpoints
+        Event Emission:
+        - Use execution_context.emit_event() to emit events during execution
+        - The run_id is automatically included in emitted events
+
+        :param run_id: The ID of the run being executed
+        :param worker_id: The ID of the worker executing the run
+        :param execution_context: Execution context providing cancellation checking and event emission
         :return:
         """
         ...
 
 
 class RandomSleepRunExecutor(AgentRunExecutor):
-    async def execute(
-        self, run_id: UUID, worker_id: str, run_store: RunProcessingStore, run_execution_ctx: RunExecutionContext
-    ):
+    async def execute(self, run_id: UUID, worker_id: str, execution_context: RunExecutionContext):
         """
         Emulate actual run execution with multiple checkpoints each with random durations.
 
@@ -55,27 +53,23 @@ class RandomSleepRunExecutor(AgentRunExecutor):
         This means if cancellation is detected, the current step will complete fully
         before the executor returns.
 
-        :param run_id:
-        :param worker_id:
-        :param run_store:
-        :param run_execution_ctx: Context for checking cancellation status at checkpoints
+        :param run_id: The ID of the run being executed
+        :param worker_id: The ID of the worker executing the run
+        :param execution_context: Execution context providing cancellation checking and event emission
         :return:
         """
         for i in range(5):
-            if run_execution_ctx.is_cancelled():
+            if execution_context.is_cancelled():
                 logger.info(f"{worker_id}: run cancelled", run_id=run_id)
                 return
             logger.info(f"{worker_id}: Running run step", run_id=run_id, step=i)
             step_execution_time = random.randint(0, 8)
             await asyncio.sleep(step_execution_time)
-            # await self.run_store.set_progress(run_id, i / 5, {"step": i})
-            # await notifier.publish(RunEvent(run_id, "progress", {"step": i}))
+            # await execution_context.emit_event(event_type="progress", payload={"step": str(i), "total": "5"})
 
 
 class DummyRunExecutor(AgentRunExecutor):
-    async def execute(
-        self, run_id: UUID, worker_id: str, run_store: RunProcessingStore, run_execution_ctx: RunExecutionContext
-    ):
+    async def execute(self, run_id: UUID, worker_id: str, execution_context: RunExecutionContext):
         """
         Simple run executor with a single step that takes a short time to execute.
 
@@ -89,13 +83,12 @@ class DummyRunExecutor(AgentRunExecutor):
         For this executor, the checkpoint is at the start, so cancellation is honored
         before any work begins.
 
-        :param run_id:
-        :param worker_id:
-        :param run_store:
-        :param run_execution_ctx: Context for checking cancellation status at checkpoints
+        :param run_id: The ID of the run being executed
+        :param worker_id: The ID of the worker executing the run
+        :param execution_context: Execution context providing cancellation checking and event emission
         :return:
         """
-        if run_execution_ctx.is_cancelled():
+        if execution_context.is_cancelled():
             logger.info(f"{worker_id}: run cancelled", run_id=run_id)
             return
         logger.info(f"{worker_id}: Running run step", run_id=run_id)

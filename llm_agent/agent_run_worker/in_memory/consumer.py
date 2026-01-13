@@ -6,6 +6,7 @@ from agent_run_worker.domain.runs.claim import ClaimedRun
 from agent_run_worker.domain.runs.execution_context import RunExecutionContext
 from contracts.services.consumer import Consumer
 from contracts.services.queue import RunSignalQueue
+from contracts.services.event_log import RunEventLog
 from agent_run_worker.services.runs.processing_store import RunProcessingStore
 
 logger = structlog.get_logger(__name__)
@@ -16,6 +17,7 @@ class InMemoryConsumer(Consumer):
         self,
         run_store: RunProcessingStore,
         run_signal_queue: RunSignalQueue,
+        event_log: RunEventLog,
         worker_id: str,
         run_executor: AgentRunExecutor,
         heartbeat_interval_seconds: int | float = 5,
@@ -24,6 +26,7 @@ class InMemoryConsumer(Consumer):
 
         :param run_store:
         :param run_signal_queue:
+        :param event_log: Event log for emitting events during run execution
         :param worker_id:
         :param run_executor:
         :param heartbeat_interval_seconds:
@@ -34,6 +37,7 @@ class InMemoryConsumer(Consumer):
         logger.info("Initializing in-memory consumer", worker_id=worker_id)
         self.run_store = run_store
         self.run_signal_queue = run_signal_queue
+        self.event_log = event_log
         self._execution_allowed = True
         self.worker_id = worker_id
         self.run_lease_scope_factory = RunLeaseScope
@@ -73,7 +77,10 @@ class InMemoryConsumer(Consumer):
                 logger.info(f"{self.worker_id}: shutting down")
                 break
 
-            run_execution_ctx = RunExecutionContext(run_id=claimed_run.id)
+            run_execution_ctx = RunExecutionContext(
+                run_id=claimed_run.id,
+                event_log=self.event_log,
+            )
             self._current_run_execution_ctx = run_execution_ctx
 
             logger.info(f"{self.worker_id}: claimed run", run_id=claimed_run.id)
@@ -110,8 +117,7 @@ class InMemoryConsumer(Consumer):
             await self.run_executor.execute(
                 run_id=run_id,
                 worker_id=self.worker_id,
-                run_store=self.run_store,
-                run_execution_ctx=self._current_run_execution_ctx,
+                execution_context=self._current_run_execution_ctx,
             )
 
             if self._current_run_execution_ctx.is_cancelled():
