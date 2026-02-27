@@ -6,7 +6,6 @@ from uuid import UUID
 from agent_run_worker.domain.runs.claim import ClaimedRun
 from contracts.domain.runs.event import RunEvent
 from contracts.domain.runs.status import RunStatus
-from contracts.services.event_log import RunEventLog
 
 
 class RunProcessingStore(Protocol):

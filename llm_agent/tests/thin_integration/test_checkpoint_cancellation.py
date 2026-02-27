@@ -19,7 +19,6 @@ from agent_run_worker.in_memory.run_executor import AgentRunExecutor
 from agent_run_worker.domain.runs.execution_context import RunExecutionContext
 from llm_agent.domain.agent.runs.request import RunRequest
 from contracts.domain.runs.status_code import RunStatusCode
-from agent_run_worker.services.runs.processing_store import RunProcessingStore
 from llm_agent.services.agent.transition_policy import RunTransitionPolicy
 from local_runtime.event_log.in_memory import InMemoryRunEventLog
 from local_runtime.run_signal_queue.queue import InMemoryRunSignalQueue
