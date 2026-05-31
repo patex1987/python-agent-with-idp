@@ -1,0 +1,3 @@
+type: skill
+skillName: clean-architecture
+description: "Use when designing or changing architecture boundaries, dependency direction, domain/application/service/infrastructure code, worker/event-log boundaries, or svcs registrar wiring."

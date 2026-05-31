@@ -17,6 +17,12 @@ It also provides infrastructure for:
 
 ---
 
+## Documentation
+
+Supporting docs are organized under [`docs/`](docs/README.md), with architecture notes, implementation plans, reusable patterns, and project knowledge separated by purpose.
+
+---
+
 ## 1. High-Level Architecture
 
 ```

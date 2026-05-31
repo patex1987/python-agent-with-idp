@@ -1,0 +1,3 @@
+type: skill
+skillName: fastapi-service
+description: "Use when writing or editing Python FastAPI routes, DTOs, middleware, async service code, svcs dependency access, Pydantic validation, error handling, or API tests."
