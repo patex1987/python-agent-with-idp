@@ -323,7 +323,7 @@ This does **not** affect the main FastAPI runtime.
 Use this env file:
 
 ```
-configuration/local_or_ide/local_development.env
+configuration/env_files/local/local-development.env
 ```
 
 Run the service:
@@ -350,7 +350,7 @@ Run the container with local development env:
 
 ```sh
 docker run -it -p 8080:8080 \
-  --env-file configuration/docker/local_development.env \
+  --env-file configuration/env_files/in-docker/local-development.env \
   --rm throttling_seq:local_dev
 ```
 
@@ -375,8 +375,8 @@ Different execution models require different env files:
 
 | Env file                             | Used for                          |
 | ------------------------------------ | --------------------------------- |
-| `local_or_ide/local_development.env` | Running from IDE                  |
-| `docker/local_development.env`       | Running from Docker dev container |
+| `env_files/local/local-development.env` | Running from IDE or host shell after rendering from template |
+| `env_files/in-docker/local-development.env` | Running from Docker dev container after rendering from template |
 | Production envs                      | Provided by infrastructure        |
 
 All env vars follow the pydantic-settings conventions:

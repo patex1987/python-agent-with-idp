@@ -11,7 +11,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - ./configuration/docker/local_development.env
+      - ./configuration/env_files/in-docker/local-development.env
     volumes:
       - ./llm_agent/llm_agent:/app/llm_agent
     command:

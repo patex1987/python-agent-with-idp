@@ -7,6 +7,19 @@ wheels/
 *.egg-info
 .idea/
 
+# Rendered local environment files. Commit templates only.
+.env
+.env.*
+*.local.env
+*.secret.env
+*.private.env
+*.override.env
+configuration/local_or_ide/*.env
+configuration/docker/*.env
+configuration/env_files/local/*.env
+configuration/env_files/in-docker/*.env
+!configuration/env_files/templates/
+!configuration/env_files/templates/**
+
 # Virtual environments
 .venv
-

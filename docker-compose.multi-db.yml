@@ -18,7 +18,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - ./configuration/docker/local_production.env
+      - ./configuration/env_files/in-docker/local-production.env
 
   pg-backend-1:
     image: postgres:17
@@ -66,7 +66,7 @@ services:
       pg-backend-1:
         condition: service_healthy
     env_file:
-      - ./configuration/docker/local_production.env
+      - ./configuration/env_files/in-docker/local-production.env
 
     environment:
       PICCOLO_DB_HOST: pg-backend-1
@@ -85,7 +85,7 @@ services:
       pg-backend-2:
         condition: service_healthy
     env_file:
-      - ./configuration/docker/local_production.env
+      - ./configuration/env_files/in-docker/local-production.env
     environment:
       PICCOLO_DB_HOST: pg-backend-2
       PICCOLO_DB_PORT: "5432"

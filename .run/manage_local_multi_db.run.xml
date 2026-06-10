@@ -1,20 +1,21 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="manage_local_multi_db" type="PythonConfigurationType" factoryName="Python">
-    <module name="throttling_sequencer_webapp" />
-    <option name="ENV_FILES" value="$PROJECT_DIR$/configuration/local_or_ide/local_development.multi_db.env" />
+    <module name="llm_agent" />
+    <option name="ENV_FILES" value="$PROJECT_DIR$/configuration/env_files/local/local-development.env" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
       <env name="PYTHONUNBUFFERED" value="1" />
     </envs>
     <option name="SDK_HOME" value="" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/throttling_sequencer_fastapi" />
-    <option name="IS_MODULE_SDK" value="true" />
+    <option name="SDK_NAME" value="uv (llm_agent)" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/llm_agent" />
+    <option name="IS_MODULE_SDK" value="false" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-    <option name="RUN_TOOL" value="" />
-    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/throttling_sequencer_fastapi/manage.py" />
+    <option name="RUN_TOOL" value="true" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/llm_agent/manage.py" />
     <option name="PARAMETERS" value="" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />

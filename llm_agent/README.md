@@ -10,7 +10,8 @@ INFO:     127.0.0.1:44232 - "GET /api/v1/health/dummy-health HTTP/1.1" 200 OK
 # Development
 
 ## Running from IDE
-To run in development mode in pycharm (or your preferred IDE) use: `[./configuration/local_or_ide/local_development.env](../configuration/local_or_ide/local_development.env)`
+To run in development mode in PyCharm or your preferred IDE, render and use
+`../configuration/env_files/local/local-development.env`.
 and execute `llm_agent/manage.py` with that env file
 
 ## Running from docker
@@ -19,7 +20,7 @@ To run in development mode once the container the image is built (see the sectio
 To execute the service immediately:
 ```shell
 docker run -it -p 8080:8080 \
-  --env-file "/home/patex1987/development/llm_agent_webapp/configuration/docker/local_development.env"  \
+  --env-file "../configuration/env_files/in-docker/local-development.env"  \
   --rm \
   fastapi_rest:local_dev
 ```
@@ -37,7 +38,7 @@ Output:
 To execute the container with a shell session:
 ```shell
 docker run -it -p 8080:8080 \
-  --env-file "/home/patex1987/development/llm_agent_webapp/configuration/docker/local_development.env"  \
+  --env-file "../configuration/env_files/in-docker/local-development.env"  \
   --rm \
   fastapi_rest:local_dev \
   /bin/bash

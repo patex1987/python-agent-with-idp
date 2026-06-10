@@ -27,7 +27,7 @@ The project is being restarted after a pause. Prefer reading the current code an
 - Run tests from `llm_agent/`: `uv run pytest` or `pytest`, depending on the active environment.
 - Run focused tests from `llm_agent/`: `uv run pytest tests/path/to/test_file.py -k "<case>"`.
 - Run Ruff checks from `llm_agent/`: `uv run ruff check .` when Ruff is available in the environment.
-- Run the app from `llm_agent/`: `uv run --env-file ../configuration/local_or_ide/local_development.env python manage.py`.
+- Run the app from `llm_agent/`: render `../configuration/env_files/local/local-development.env` from its template, then run `uv run --env-file ../configuration/env_files/local/local-development.env python manage.py`.
 - Docker and dependency services are described in `DEVELOPMENT.md` and `llm_agent/README.md`.
 
 When the exact command is uncertain, inspect `llm_agent/pyproject.toml`, `DEVELOPMENT.md`, and existing scripts before inventing a new workflow.

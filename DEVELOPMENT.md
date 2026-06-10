@@ -35,7 +35,19 @@ Prerequisites:
 - A running Postgres instance - as **database dependency is baked in to the code atm**
   - there is an in-memory repository already available, which will be used fro local testing as a default in the future 
 - (Optional) Keycloak instance for JWT authentication - see section 2.1
-- Set the correct environment file: e.g. `configuration/local_or_ide/local_development.env`
+- Render the local environment file from the committed template:
+
+```bash
+mkdir -p configuration/env_files/local configuration/env_files/in-docker
+cp configuration/env_files/templates/local/local-development.env.template configuration/env_files/local/local-development.env
+cp configuration/env_files/templates/local/local-production.env.template configuration/env_files/local/local-production.env
+cp configuration/env_files/templates/in-docker/local-production.env.template configuration/env_files/in-docker/local-production.env
+cp configuration/env_files/templates/in-docker/local-development.env.template configuration/env_files/in-docker/local-development.env
+```
+
+Edit the rendered files under `configuration/env_files/` for local secrets such
+as `OPENROUTER_API_KEY`. Rendered `.env` files are ignored by git; templates are
+safe to commit.
 
 ## 2.1. Keycloak Setup (Optional)
 
@@ -65,7 +77,7 @@ python testing_payloads/get_keycloak_token.py
 Then:
 
 ```bash
-uv run --env-file=.../path/to/local_development.env python manage.py
+uv run --env-file ../configuration/env_files/local/local-development.env python manage.py
 ```
 
 ofc, you can execute it from your favorite IDE, with pointing to the right env file (e.g. pycharm)
@@ -94,15 +106,13 @@ docker build --target dev -t fastapi_graphql:local_dev -f Dockerfile .
 
 ```shell
 docker run -it -p 8080:8080 \
-  --env-file configuration/docker/local_development.env \
-  --network throttling_sequencer_webapp_default \
+  --env-file configuration/env_files/in-docker/local-development.env \
   fastapi_graphql:local_dev
 ```
 
 ```shell
 docker run -it -p 8080:8080 \
-  --env-file configuration/docker/local_development.multi_db.env \
-  --network throttling_sequencer_webapp_default \
+  --env-file configuration/env_files/in-docker/local-development.env \
   fastapi_graphql:local_dev
 ```
 
@@ -378,4 +388,3 @@ python throttling_sequencer/services/navigation/runner_for_steps_test_to_delete.
   * containerized E2E
 * Improve migration triggering mechanism
 * Implement OpenTelemetry pipeline in `core/telemetry.py`
-
