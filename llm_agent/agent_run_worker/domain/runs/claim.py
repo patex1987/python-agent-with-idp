@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 from uuid import UUID
 
 from contracts.domain.runs.status import RunStatus
@@ -13,5 +14,5 @@ class ClaimedRun:
     """
 
     id: UUID
-    claim_type: enqueued | running_lost_claim
+    claim_type: Literal["enqueued", "running_lost_claim"]
     run_status: RunStatus
