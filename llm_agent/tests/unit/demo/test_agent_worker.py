@@ -91,6 +91,7 @@ async def test_agent_worker_happy_path_uses_required_tool_sequence():
     ]
     assert fake_mcp.calls[0].arguments["correlation_id"] == "corr-1"
     assert fake_mcp.calls[0].arguments["request_id"] == "req-1"
+    assert fake_mcp.calls[2].arguments["seat_ids"] == ["seat-2"]
 
 
 @pytest.mark.asyncio
@@ -176,7 +177,10 @@ class FakeMcpClient:
                 {
                     "id": "screening-1",
                     "movieId": "movie-1",
-                    "seats": [{"id": "seat-1", "row": "A", "number": 1}],
+                    "seats": [
+                        {"id": "seat-1", "row": "A", "number": 1, "isReserved": True},
+                        {"id": "seat-2", "row": "A", "number": 2, "isReserved": False},
+                    ],
                 }
             ],
             "movie_request_reservation": {"id": "request-1", "status": "pending"},

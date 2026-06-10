@@ -520,8 +520,12 @@ def first_seat(screening: Mapping[str, Any]) -> dict[str, Any] | None:
     seats = screening.get("seats")
     if not isinstance(seats, list) or not seats:
         return None
-    first = seats[0]
-    return first if isinstance(first, dict) else None
+
+    for seat in seats:
+        if isinstance(seat, dict) and seat.get("isReserved") is not True:
+            return seat
+
+    return None
 
 
 def preferred_movie_id(movie: Mapping[str, Any]) -> str | None:

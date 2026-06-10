@@ -29,6 +29,7 @@ services:
       - ./configuration/env_files/in-docker/local-production.env
     environment:
       PORT: "8081"
+      UVICORN_PORT: "8081"
       UVICORN_HOST: "0.0.0.0"
       UVICORN_LOG_LEVEL: "info"
       UVICORN_RELOAD: "False"
@@ -43,6 +44,8 @@ services:
       AXUM_TOOLS_MCP_URL: "http://host.docker.internal:8092/mcp"
     labels:
       observability.logs: "true"
+      service.name: "movie-agent-worker"
+      service.environment: "local"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
