@@ -17,3 +17,7 @@ class RequestContextVars:
     """
 
     JWT_TOKEN: contextvars.ContextVar[str | None] = contextvars.ContextVar("jwt_token", default=None)
+    REQUEST_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
+    CORRELATION_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar("correlation_id", default=None)
+    TRACEPARENT: contextvars.ContextVar[str | None] = contextvars.ContextVar("traceparent", default=None)
+    TRACESTATE: contextvars.ContextVar[str | None] = contextvars.ContextVar("tracestate", default=None)

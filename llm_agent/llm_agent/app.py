@@ -6,6 +6,7 @@ from llm_agent.api.http.middlewares.authentication import (
 )
 from llm_agent.api.http.middlewares.execution import ExecutionContextMiddleware
 from llm_agent.api.http.v1.routes.agent import agent_router
+from llm_agent.api.http.v1.routes.demo import demo_router
 from llm_agent.api.http.v1.routes.health import health_router
 from llm_agent.api.http.v1.routes.throttle_steps_calculator import throttle_router
 from llm_agent.application.authentication.manager import AsyncAuthenticationManager
@@ -31,6 +32,7 @@ def create_app(*, registry: svcs.Registry) -> fastapi.FastAPI:
     app.include_router(router=health_router, prefix="/api/v1/health", tags=["health"])
     app.include_router(router=throttle_router, prefix="/api/v1/throttle", tags=["throttle"])
     app.include_router(router=agent_router, prefix="/api/v1/agent", tags=["agent"])
+    app.include_router(router=demo_router, prefix="/api/v1/demo", tags=["demo"])
 
     instrument_for_telemetry(app)
 

@@ -12,6 +12,7 @@ from llm_agent.di.provider import RegistrarProvider
 from llm_agent.di.registry_builder import apply_registrars
 from llm_agent.domain.infrastructure_setup import InfrastructureSetup
 from llm_agent.infrastructure.infra_setup.local_dev import LocalDevInfrastructureSetup
+from llm_agent.infrastructure.infra_setup.noop import NoopInfrastructureSetup
 
 
 def compose_fastapi_app_with_registrars() -> fastapi.FastAPI:
@@ -79,5 +80,7 @@ def build_infra_setup(app: FastAPI, app_registrars: ApplicationDIConfig) -> Infr
     infra_registry = apply_registrars(app_registrars.infrastructure_registrars, infrastructure_registry)
     infra_container = svcs.Container(infra_registry)
     app.state.infrastructure_container = infra_container
+    if not app_registrars.infrastructure_registrars:
+        return NoopInfrastructureSetup()
     infra_setup = LocalDevInfrastructureSetup(consumer=infra_container.get(Consumer))
     return infra_setup

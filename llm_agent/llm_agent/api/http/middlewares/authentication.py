@@ -15,7 +15,7 @@ class AuthenticationMiddleware:
     def __init__(self, app: fastapi.FastAPI, authentication_manager: AsyncAuthenticationManager):
         self.app = app
         self.authentication_manager = authentication_manager
-        self.excluded_paths = ("/health",)
+        self.excluded_paths = ("/health", "/api/v1/health", "/api/v1/demo")
 
     async def __call__(
         self, scope: starlette.types.Scope, receive: starlette.types.Receive, send: starlette.types.Send
@@ -25,7 +25,7 @@ class AuthenticationMiddleware:
 
         raw_path = scope.get("path")
         if str(raw_path).startswith(self.excluded_paths):
-            logger.debug("Auth validation skipped for health checks")
+            logger.debug("Auth validation skipped for public path", path=raw_path)
             return await self.app(scope, receive, send)
 
         try:

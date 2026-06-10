@@ -14,8 +14,13 @@ dependencies = [
     "authlib>=1.6.6",
     "backoff>=2.2.1",
     "fastapi>=0.115.12",
+    "fastmcp>=3.2.4",
     "httpx>=0.28.1",
+    "langgraph>=1.2.4",
     "opentelemetry-api>=1.34.1",
+    "opentelemetry-exporter-otlp-proto-http>=1.36.0",
+    "opentelemetry-instrumentation-fastapi>=0.57b0",
+    "opentelemetry-instrumentation-httpx>=0.57b0",
     "opentelemetry-sdk>=1.34.1",
     "piccolo[postgres]>=1.28.0",
     "pydantic-settings>=2.10.1",
@@ -26,7 +31,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["llm_agent"]
+packages = ["llm_agent", "contracts", "agent_run_worker", "local_runtime"]
 
 [dependency-groups]
 dev = [
@@ -40,9 +45,3 @@ dev = [
 target-version="py312"
 line-length=120
 indent-width=4
-
-# TODO
-    #One important packaging gotcha (for later extraction)
-    #Right now your wheel build includes only packages = ["llm_agent"] (from llm_agent/pyproject.toml).
-    #So anything not under the llm_agent/llm_agent/ package tree won’t be shipped. Keeping contracts under llm_agent/contracts/...
-    #avoids surprises and makes later extraction a mechanical move.

@@ -50,7 +50,7 @@ class HttpTokenExtractor:
         try:
             return cls.extract(scope)
         except InvalidHeaderError as exc:
-            logger.warning("Token extracting failed, suppressing", exc_type=exc.__class__.__name__)
+            logger.debug("Token extracting failed, suppressing", exc_type=exc.__class__.__name__)
             return None
 
 

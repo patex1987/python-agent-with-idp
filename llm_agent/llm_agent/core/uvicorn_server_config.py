@@ -1,12 +1,15 @@
-from pydantic_settings import BaseSettings
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class UvicornServerConfig(BaseSettings):
-    host: str = "0.0.0.0"
-    port: int = 8080
-    log_level: str = "info"
-    reload: bool = False
-    log_config_path: str = "./llm_agent/configuration/log_config_json.json"
+    model_config = SettingsConfigDict(extra="ignore")
 
-    class Config:
-        env_prefix = "uvicorn_"
+    host: str = Field(default="0.0.0.0", validation_alias="UVICORN_HOST")
+    port: int = Field(default=8080, validation_alias=AliasChoices("UVICORN_PORT", "PORT"))
+    log_level: str = Field(default="info", validation_alias="UVICORN_LOG_LEVEL")
+    reload: bool = Field(default=False, validation_alias="UVICORN_RELOAD")
+    log_config_path: str = Field(
+        default="./llm_agent/configuration/log_config_json.json",
+        validation_alias="UVICORN_LOG_CONFIG_PATH",
+    )

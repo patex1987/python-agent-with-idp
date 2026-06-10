@@ -1,0 +1,1 @@
+"""Observability demo skill package."""

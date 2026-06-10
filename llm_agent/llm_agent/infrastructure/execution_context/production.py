@@ -2,9 +2,17 @@ import contextlib
 from functools import wraps
 
 import starlette.types
+from starlette.datastructures import Headers
 import structlog
 
-from llm_agent.api.context.constants import REQUEST_ID_NAME, SCOPE_TYPE_NAME, JWT_TOKEN_NAME
+from llm_agent.api.context.constants import (
+    CORRELATION_ID_NAME,
+    JWT_TOKEN_NAME,
+    REQUEST_ID_NAME,
+    SCOPE_TYPE_NAME,
+    TRACEPARENT_NAME,
+    TRACESTATE_NAME,
+)
 from llm_agent.application.execution_context import ExecutionContextEnricher
 from llm_agent.api.context.request import (
     RequestContextVars,
@@ -45,8 +53,12 @@ class ProductionContextEnricher(ExecutionContextEnricher):
     @contextlib.contextmanager
     def enrich_from_scope(self, scope: starlette.types.Scope):
         scope.setdefault("state", {})
-        request_id = generate_request_id()
         scope_type = scope["type"]
+        headers = Headers(scope=scope) if scope_type == "http" else Headers(raw=[])
+        request_id = headers.get("x-request-id") or generate_request_id()
+        correlation_id = headers.get("x-correlation-id") or request_id
+        traceparent = headers.get("traceparent")
+        tracestate = headers.get("tracestate")
 
         jwt_token = None
         if scope_type == "http":
@@ -54,18 +66,32 @@ class ProductionContextEnricher(ExecutionContextEnricher):
 
         structlog_context = {
             REQUEST_ID_NAME: request_id,
+            CORRELATION_ID_NAME: correlation_id,
             SCOPE_TYPE_NAME: scope_type,
         }
+        if traceparent:
+            structlog_context[TRACEPARENT_NAME] = traceparent
 
         try:
             structlog.contextvars.bind_contextvars(**structlog_context)
             RequestContextVars.JWT_TOKEN.set(jwt_token)
+            RequestContextVars.REQUEST_ID.set(request_id)
+            RequestContextVars.CORRELATION_ID.set(correlation_id)
+            RequestContextVars.TRACEPARENT.set(traceparent)
+            RequestContextVars.TRACESTATE.set(tracestate)
             scope["state"][REQUEST_ID_NAME] = request_id
+            scope["state"][CORRELATION_ID_NAME] = correlation_id
+            scope["state"][TRACEPARENT_NAME] = traceparent
+            scope["state"][TRACESTATE_NAME] = tracestate
             scope["state"][JWT_TOKEN_NAME] = jwt_token
             yield
         finally:
             structlog.contextvars.clear_contextvars()
             RequestContextVars.JWT_TOKEN.set(None)
+            RequestContextVars.REQUEST_ID.set(None)
+            RequestContextVars.CORRELATION_ID.set(None)
+            RequestContextVars.TRACEPARENT.set(None)
+            RequestContextVars.TRACESTATE.set(None)
 
     def get_instrumented_send(self, send: starlette.types.Send, scope: starlette.types.Scope, custom_attributes: dict):
         """

@@ -1,4 +1,5 @@
 import logging
+import os
 
 import structlog
 from structlog.typing import EventDict
@@ -10,7 +11,7 @@ def add_static_fields(logger: logging.Logger, name: str, event_dict: EventDict) 
 
     TODO: define service level constants for these fields
     """
-    event_dict.setdefault("service_name", "llm_agent_fastapi")
+    event_dict.setdefault("service_name", os.getenv("OTEL_SERVICE_NAME", "llm_agent_fastapi"))
     event_dict.setdefault("version", "0.1")
     return event_dict
 

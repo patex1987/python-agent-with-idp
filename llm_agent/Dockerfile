@@ -23,7 +23,7 @@ FROM base AS dependencies
 # copy only metadata first
 COPY pyproject.toml /app/pyproject.toml
 COPY README.md /app/README.md
-# COPY uv.lock /app/uv.lock   # (optional if you keep a lock)
+COPY uv.lock /app/uv.lock
 
 # install third-party dependencies only
 # TODO: check caching improvements: https://docs.docker.com/build/cache/optimize/#use-cache-mounts
@@ -33,6 +33,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # ---------- build (normal install) ----------
 FROM dependencies AS build
+COPY agent_run_worker /app/agent_run_worker
+COPY contracts /app/contracts
+COPY local_runtime /app/local_runtime
 COPY llm_agent /app/llm_agent
 COPY manage.py /app/manage.py
 RUN uv sync --no-dev --compile-bytecode --no-editable
@@ -44,9 +47,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends vim \
  && rm -rf /var/lib/apt/lists/*
 
 COPY llm_agent /app/llm_agent
+COPY agent_run_worker /app/agent_run_worker
+COPY contracts /app/contracts
+COPY local_runtime /app/local_runtime
 COPY manage.py /app/manage.py
 RUN uv sync --dev
-EXPOSE 8080
+EXPOSE 8080 8081
 ENTRYPOINT ["/usr/bin/tini","--"]
 #CMD ["uvicorn","llm_agent.app:create_app","--host","0.0.0.0","--port","8080","--reload","--log-config","./llm_agent/configuration/log_config_json.json","--factory"]
 CMD ["python", "manage.py"]
@@ -57,10 +63,9 @@ COPY --from=build /venv /venv
 COPY --from=build /app /app
 RUN useradd -r -u 10001 appuser && chown -R appuser:appuser /app /venv
 USER appuser
-EXPOSE 8080
+EXPOSE 8080 8081
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD \
   sh -c 'curl -fsS http://127.0.0.1:8080/api/v1/health/dummy-health || exit 1'
 ENTRYPOINT ["/usr/bin/tini","--"]
 #CMD ["uvicorn","llm_agent.app:create_app","--host","0.0.0.0","--port","8080","--log-config","./llm_agent/configuration/log_config_json.json","--factory"]
 CMD ["python", "manage.py"]
-
