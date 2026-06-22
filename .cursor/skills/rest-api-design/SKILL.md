@@ -10,7 +10,7 @@ Use this skill to design resource-oriented HTTP APIs that are consistent, predic
 ## Design Defaults
 
 - Use resource nouns, not action verbs.
-- Use plural collection names: `/runs`, `/conversations`, `/events`.
+- Use plural collection names: `/dialogues`, `/messages`, `/events`.
 - Keep the existing versioned prefix style: `/api/v1/...`.
 - Keep nesting shallow. Prefer one nested level; avoid more than two levels unless the relationship is truly scoped.
 - Model operations as resource state changes before adding custom action endpoints.
@@ -21,20 +21,21 @@ Use this skill to design resource-oriented HTTP APIs that are consistent, predic
 Good:
 
 ```text
-GET    /api/v1/runs
-POST   /api/v1/runs
-GET    /api/v1/runs/{run_id}
-GET    /api/v1/runs/{run_id}/events
-POST   /api/v1/conversations/{conversation_id}/turns
+GET    /api/v1/agent/dialogues
+POST   /api/v1/agent/dialogues
+GET    /api/v1/agent/dialogues/{dialogue_id}
+GET    /api/v1/agent/dialogues/{dialogue_id}/messages
+POST   /api/v1/agent/dialogues/{dialogue_id}/messages
+POST   /api/v1/agent/dialogues/{dialogue_id}/messages/{message_id}:cancel
 ```
 
 Avoid:
 
 ```text
-GET    /api/v1/getRuns
-POST   /api/v1/createRun
-GET    /api/v1/run/{run_id}
-POST   /api/v1/runs/{run_id}/do-cancel
+GET    /api/v1/getDialogues
+POST   /api/v1/createMessage
+GET    /api/v1/agent/dialogue/{dialogue_id}
+POST   /api/v1/agent/messages/{message_id}/do-cancel
 ```
 
 Custom action endpoints are acceptable when the operation is not naturally CRUD, but name them deliberately and document the semantics. Existing examples such as cancellation should explain whether they create intent, change state synchronously, or start asynchronous work.
@@ -103,8 +104,8 @@ Error response pattern:
 
 ```json
 {
-  "error": "run_not_found",
-  "message": "Run not found",
+  "error": "message_not_found",
+  "message": "Message not found",
   "details": {}
 }
 ```
@@ -123,8 +124,8 @@ Use the project's existing error format when one is already established.
 Example:
 
 ```text
-GET /api/v1/runs?status=running&limit=50
-GET /api/v1/runs/{run_id}/events?after=42
+GET /api/v1/agent/dialogues?limit=50
+GET /api/v1/agent/dialogues/{dialogue_id}/messages?limit=50&cursor=eyJpZCI6Ii4uLiJ9
 ```
 
 ## Authentication And Authorization
@@ -161,20 +162,26 @@ Keep route handlers thin:
 
 ```python
 @router.get(
-    "/runs/{run_id}",
-    response_model=RunDto,
-    responses={404: {"description": "Run not found"}},
+    "/dialogues/{dialogue_id}/messages/{message_id}",
+    response_model=MessageDto,
+    responses={404: {"description": "Message not found"}},
 )
-async def get_run(
-    run_id: UUID,
-    run_service: RunService = fastapi.Depends(get_run_service),
-) -> RunDto:
+async def get_message(
+    dialogue_id: UUID,
+    message_id: UUID,
+    request: fastapi.Request,
+    dialogue_service: DialogueService = fastapi.Depends(get_dialogue_service),
+) -> MessageDto:
     try:
-        run_status = await run_service.get_run(run_id)
-    except RunNotFoundError as exc:
+        message = await dialogue_service.get_message(
+            user_id=get_user_id(request),
+            dialogue_id=dialogue_id,
+            message_id=message_id,
+        )
+    except (DialogueNotFoundError, MessageNotFoundError) as exc:
         raise fastapi.HTTPException(status_code=404, detail=str(exc)) from exc
 
-    return RunMapper.to_dto(run_status)
+    return DialogueMapper.to_message_dto(message)
 ```
 
 Route responsibilities:

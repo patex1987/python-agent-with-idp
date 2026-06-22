@@ -8,18 +8,18 @@ Use these examples as patterns, not templates to copy blindly.
 from uuid import UUID
 
 
-class FakeRunStore:
+class FakeAgentExecutionStatusStore:
     def __init__(self) -> None:
-        self._runs: dict[UUID, RunStatus] = {}
+        self._statuses: dict[UUID, AgentExecutionStatus] = {}
 
-    def seed(self, run_status: RunStatus) -> None:
-        self._runs[run_status.id] = run_status
+    def seed(self, status: AgentExecutionStatus) -> None:
+        self._statuses[status.id] = status
 
-    async def get_status(self, run_id: UUID) -> RunStatus | None:
-        return self._runs.get(run_id)
+    async def get_status(self, agent_execution_id: UUID) -> AgentExecutionStatus | None:
+        return self._statuses.get(agent_execution_id)
 
-    async def save(self, run_status: RunStatus) -> None:
-        self._runs[run_status.id] = run_status
+    async def save(self, status: AgentExecutionStatus) -> None:
+        self._statuses[status.id] = status
 ```
 
 Use a fake when stateful behavior matters. Keep it smaller than production
@@ -61,9 +61,9 @@ is not replacing meaningful stateful behavior.
 ## DI Override Registrar
 
 ```python
-def test_run_uses_dummy_executor() -> None:
+def test_dialogue_message_uses_dummy_executor() -> None:
     override_registrar = DependencyOverrideRegistrar(
-        factory_overrides={AgentRunExecutor: DummyRunExecutor},
+        factory_overrides={AgentExecutionExecutor: DummyAgentExecutionExecutor},
         value_overrides={},
     )
 
@@ -76,9 +76,14 @@ def test_run_uses_dummy_executor() -> None:
     app = create_app_with_selected_di(registrar_provider=registrar_provider)
 
     with TestClient(app) as client:
-        response = client.post("/api/v1/agent/runs", json={"prompt": "hello", "history": []})
+        dialogue_response = client.post("/api/v1/agent/dialogues", json={"title": "Demo"})
+        dialogue_id = dialogue_response.json()["id"]
+        response = client.post(
+            f"/api/v1/agent/dialogues/{dialogue_id}/messages",
+            json={"content": "hello"},
+        )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
 ```
 
 Use DI overrides for app or thin integration tests instead of monkey-patching
@@ -89,8 +94,8 @@ production modules.
 ```text
 llm_agent/tests/thin_integration/
   conftest.py
-  test_agent_run_orchestration.py
-  test_canceled_runs.py
+  test_dialogue_message_vertical_slice.py
+  test_canceled_agent_executions.py
 ```
 
 ```python

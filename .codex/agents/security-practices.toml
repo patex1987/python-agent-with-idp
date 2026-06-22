@@ -21,7 +21,7 @@ If generated files are missing, use the canonical source under `.ai/`.
 Primary focus:
 - Input validation, output encoding, error handling, and unsafe trust boundaries.
 - OIDC/JWT validation, token extraction, JWKS discovery, auth middleware, and identity propagation.
-- Authorization assumptions around routes, services, workers, and run/job ownership.
+- Authorization assumptions around routes, services, workers, and dialogue/message/agent-execution ownership.
 - Secrets handling: hardcoded values, environment files, logs, Docker images, scripts, and local config.
 - Database risks: unsafe queries, migration side effects, connection configuration, and transaction boundaries.
 - Worker and event-log risks: idempotency, replay, duplicate processing, cancellation, and leakage across users.

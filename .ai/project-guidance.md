@@ -1,6 +1,6 @@
 # Project AI Guidance
 
-This repository is a Python 3.12 FastAPI service scaffold for an LLM agent backend. It currently combines a FastAPI API, OIDC/JWT authentication infrastructure, `svcs` dependency injection, Piccolo/PostgreSQL persistence, structured logging, and in-memory job/run orchestration patterns.
+This repository is a Python 3.12 FastAPI service scaffold for an LLM agent backend. It currently combines a FastAPI API, OIDC/JWT authentication infrastructure, `svcs` dependency injection, Piccolo/PostgreSQL persistence, structured logging, and in-memory dialogue/message/agent-execution orchestration patterns.
 
 The project is being restarted after a pause. Prefer reading the current code and docs before making assumptions. Some older throttle/game/navigation code still exists as example or legacy domain code; do not treat it as the long-term product direction unless the current task explicitly says so.
 
@@ -14,7 +14,7 @@ The project is being restarted after a pause. Prefer reading the current code an
 - `llm_agent/llm_agent/services/`: use-case orchestration services.
 - `llm_agent/llm_agent/infrastructure/`: concrete adapters for auth, execution context, database, and service discovery.
 - `llm_agent/llm_agent/di/`: `svcs` registry and FastAPI composition.
-- `llm_agent/agent_run_worker/`, `llm_agent/contracts/`, `llm_agent/local_runtime/`: worker, contracts, event log, queue, and run-store experiments.
+- `llm_agent/agent_execution_worker/`, `llm_agent/contracts/`, `llm_agent/local_runtime/`: worker, shared contracts, event log, dispatching, and local runtime adapters.
 - `llm_agent/tests/`: tests and fake implementations.
 - `docs/`: project documentation, architecture notes, plans, patterns, and knowledge.
 - `.ai/`: canonical AI guidance. Generated tool files are produced from this folder by `.ai/sync.sh`.
@@ -39,9 +39,10 @@ When the exact command is uncertain, inspect `llm_agent/pyproject.toml`, `DEVELO
 - Keep infrastructure adapters behind protocols or narrow interfaces where the code already follows that pattern.
 - Use `svcs` registration as the composition boundary. Avoid hidden global dependencies.
 - Preserve async boundaries carefully. Do not block the event loop with synchronous I/O in request paths.
-- Treat worker/run/event-log code as concurrency-sensitive. Be explicit about state transitions, idempotency, cancellation, and event ordering.
+- Treat worker/agent-execution/event-log code as concurrency-sensitive. Be explicit about state transitions, idempotency, cancellation, and event ordering.
 - Prefer typed Python with clear dataclasses/Pydantic models over unstructured dictionaries at boundaries.
 - Keep comments sparse and useful: explain decisions, invariants, or non-obvious side effects.
+- For Python docstrings, use one summary sentence, then a blank line, then concise detail only when needed. Use simple reStructuredText fields such as `:param name:`, `:return:`, and `:raises Error:` when parameter, return, or error semantics need explanation.
 
 ## Testing Guidance
 

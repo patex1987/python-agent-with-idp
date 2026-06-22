@@ -4,6 +4,7 @@ Reusable task-specific skills live here.
 
 Currently available:
 
+- `agent-inspiration`: retrieve focused local inspiration from curated agent reference repositories and pattern notes.
 - `clean-architecture`: keep API, service, domain, infrastructure, worker, event-log, and registrar boundaries clear.
 - `fastapi-service`: build FastAPI service code that fits this repo's Python, Pydantic, async, and `svcs` conventions.
 - `principal-engineer-planner`: plan complex engineering work before implementation and write the plan under `docs/plans/`.

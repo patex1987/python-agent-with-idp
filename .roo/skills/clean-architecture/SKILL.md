@@ -25,7 +25,7 @@ Dependencies point inward.
 - Use-case services: `llm_agent/llm_agent/services/`
 - Infrastructure adapters: `llm_agent/llm_agent/infrastructure/`
 - DI and registrar composition: `llm_agent/llm_agent/di/`
-- Worker/runtime contracts: `llm_agent/agent_run_worker/`, `llm_agent/contracts/`, `llm_agent/local_runtime/`
+- Worker/runtime contracts: `llm_agent/agent_execution_worker/`, `llm_agent/contracts/`, `llm_agent/local_runtime/`
 - Tests and fakes: `llm_agent/tests/`
 
 ## Placement Guide
@@ -54,6 +54,7 @@ Dependencies point inward.
 - Use classes when they express a real service boundary, hold injected dependencies, or match existing registrar/lifecycle patterns.
 - Keep services focused on one use case or bounded feature area. Split broad services before they become dependency hubs.
 - Do not pass powerful mutable stores deep into execution logic when a narrower port, event sink, or cancellation signal is enough.
+- For public services, ports, and protocols, use docstrings to explain contract semantics and invariants when names and types are not enough. Follow the project docstring format: one summary sentence, blank line, concise detail if needed, and simple reStructuredText fields for non-obvious params, returns, or raised errors.
 
 ## Domain And Persistence
 

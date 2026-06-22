@@ -33,6 +33,7 @@ Use this skill to keep API and service code aligned with this repo's Python/Fast
 - Prefer small, composable functions over duplicated branches.
 - Use descriptive snake_case names, especially boolean names with `is_`, `has_`, `can_`, or `should_`.
 - Prefer object-in/object-out APIs for complex calls: accept a typed request/config object and return a typed result object.
+- Write Python docstrings as a single summary sentence, a blank line, then concise detail only when needed. Use simple reStructuredText fields (`:param name:`, `:return:`, `:raises Error:`) for non-obvious parameter, return, and error semantics; avoid docstrings that only repeat the signature.
 - Avoid forcing a functional rewrite where existing classes intentionally model service boundaries, registrars, or lifecycle-owned dependencies.
 
 ## Error Handling
@@ -66,7 +67,7 @@ Use this skill to keep API and service code aligned with this repo's Python/Fast
 - Test routes for validation, status codes, auth behavior, and DTO mapping.
 - Test services with fake stores/queues/event logs where possible.
 - For async code, cover cancellation, timeout, retry, and duplicate-processing behavior when relevant.
-- For worker/run/event flows, assert both event sequence and derived/folded state when useful.
+- For worker/agent-execution/event flows, assert both event sequence and derived/folded state when useful.
 
 ## Avoid
 

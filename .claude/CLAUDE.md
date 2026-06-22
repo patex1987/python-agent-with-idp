@@ -2,7 +2,7 @@
 
 # Project AI Guidance
 
-This repository is a Python 3.12 FastAPI service scaffold for an LLM agent backend. It currently combines a FastAPI API, OIDC/JWT authentication infrastructure, `svcs` dependency injection, Piccolo/PostgreSQL persistence, structured logging, and in-memory job/run orchestration patterns.
+This repository is a Python 3.12 FastAPI service scaffold for an LLM agent backend. It currently combines a FastAPI API, OIDC/JWT authentication infrastructure, `svcs` dependency injection, Piccolo/PostgreSQL persistence, structured logging, and in-memory dialogue/message/agent-execution orchestration patterns.
 
 The project is being restarted after a pause. Prefer reading the current code and docs before making assumptions. Some older throttle/game/navigation code still exists as example or legacy domain code; do not treat it as the long-term product direction unless the current task explicitly says so.
 
@@ -16,7 +16,7 @@ The project is being restarted after a pause. Prefer reading the current code an
 - `llm_agent/llm_agent/services/`: use-case orchestration services.
 - `llm_agent/llm_agent/infrastructure/`: concrete adapters for auth, execution context, database, and service discovery.
 - `llm_agent/llm_agent/di/`: `svcs` registry and FastAPI composition.
-- `llm_agent/agent_run_worker/`, `llm_agent/contracts/`, `llm_agent/local_runtime/`: worker, contracts, event log, queue, and run-store experiments.
+- `llm_agent/agent_execution_worker/`, `llm_agent/contracts/`, `llm_agent/local_runtime/`: worker, shared contracts, event log, dispatching, and local runtime adapters.
 - `llm_agent/tests/`: tests and fake implementations.
 - `docs/`: project documentation, architecture notes, plans, patterns, and knowledge.
 - `.ai/`: canonical AI guidance. Generated tool files are produced from this folder by `.ai/sync.sh`.
@@ -41,9 +41,10 @@ When the exact command is uncertain, inspect `llm_agent/pyproject.toml`, `DEVELO
 - Keep infrastructure adapters behind protocols or narrow interfaces where the code already follows that pattern.
 - Use `svcs` registration as the composition boundary. Avoid hidden global dependencies.
 - Preserve async boundaries carefully. Do not block the event loop with synchronous I/O in request paths.
-- Treat worker/run/event-log code as concurrency-sensitive. Be explicit about state transitions, idempotency, cancellation, and event ordering.
+- Treat worker/agent-execution/event-log code as concurrency-sensitive. Be explicit about state transitions, idempotency, cancellation, and event ordering.
 - Prefer typed Python with clear dataclasses/Pydantic models over unstructured dictionaries at boundaries.
 - Keep comments sparse and useful: explain decisions, invariants, or non-obvious side effects.
+- For Python docstrings, use one summary sentence, then a blank line, then concise detail only when needed. Use simple reStructuredText fields such as `:param name:`, `:return:`, and `:raises Error:` when parameter, return, or error semantics need explanation.
 
 ## Testing Guidance
 
@@ -83,6 +84,7 @@ Read the relevant rule files from `.ai/rules/` when the task matches their descr
 
 Read the relevant skill file from `.ai/skills/` when the task matches its description.
 
+- **agent-inspiration**: Use to retrieve focused local inspiration from curated agent reference repositories and pattern notes before raw repo inspection or internet research; validate externally only when requested or local knowledge is missing/stale. (read `.ai/skills/agent-inspiration/SKILL.md`)
 - **clean-architecture**: Use when designing or changing architecture boundaries, dependency direction, domain/application/service/infrastructure code, worker/event-log boundaries, or svcs registrar wiring. (read `.ai/skills/clean-architecture/SKILL.md`)
 - **fastapi-service**: Use when writing or editing Python FastAPI routes, DTOs, middleware, async service code, svcs dependency access, Pydantic validation, error handling, or API tests. (read `.ai/skills/fastapi-service/SKILL.md`)
 - **principal-engineer-planner**: Use before implementation to inspect the repository, clarify requirements, compare alternatives, identify risks, and produce an implementation-ready plan under docs/plans/. (read `.ai/skills/principal-engineer-planner/SKILL.md`)

@@ -29,6 +29,7 @@ Primary focus:
 Review method:
 - Ground every finding in concrete file/line evidence.
 - Prefer self-documenting code over excessive comments, but request docstrings for public APIs, complex decisions, and non-obvious side effects.
+- Check Python docstrings against the project format: one summary sentence, blank line, concise details only when useful, and simple reStructuredText fields for non-obvious params, returns, or raised errors.
 - Treat tests as part of readability: unclear tests are maintenance debt.
 - Explain why each issue would slow or mislead a future maintainer.
 - Suggest the smallest clear improvement, not a full rewrite.
