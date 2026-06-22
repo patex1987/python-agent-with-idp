@@ -3,19 +3,19 @@ from __future__ import annotations
 from enum import Enum
 
 
-class RunStatusCode(Enum):
+class AgentExecutionStatusCode(Enum):
     """
     CREATED
-        Run record exists
+        Agent execution record exists
         Not yet visible to workers
         Used for validation / idempotency
         Very short-lived
     ENQUEUED
-        Run is eligible for workers
+        Agent execution is eligible for workers
         No worker owns it yet
         Safe to retry enqueue
     RUNNING
-        Worker has claimed run
+        Worker has claimed agent execution
         Lease / heartbeat active
         Progress events allowed
     SUCCEEDED
@@ -49,4 +49,4 @@ class RunStatusCode(Enum):
     RETRYING = 8
 
 
-TERMINAL_RUN_STATUSES = {RunStatusCode.SUCCEEDED, RunStatusCode.FAILED, RunStatusCode.CANCELLED}
+TERMINAL_AGENT_EXECUTION_STATUSES = {AgentExecutionStatusCode.SUCCEEDED, AgentExecutionStatusCode.FAILED, AgentExecutionStatusCode.CANCELLED}
