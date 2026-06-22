@@ -166,7 +166,7 @@ Use `container.get(Type)` for synchronous factories and values. Use
 
 1. Add a focused file under `llm_agent/llm_agent/di/registrars/`.
 2. Implement a class named after the feature or boundary, for example
-   `RunOrchestrationRegistrar`.
+   `AgentExecutionRegistrar`.
 3. Implement `register(self, registry: svcs.Registry) -> None`.
 4. Register interfaces, protocols, ports, or service types as keys. Prefer
    registering abstractions when a concrete implementation is swappable.
@@ -221,24 +221,30 @@ service from the request container:
 ```python
 import fastapi
 import svcs.fastapi
+from uuid import UUID
+
+from llm_agent.api.http.v1.dto.dialogue import DialogueDto
+from llm_agent.api.http.v1.mappers.dialogue import DialogueV1Mapper
+from llm_agent.services.dialogue import DialogueService
 
 
-def get_run_service(
+def get_dialogue_service(
     services: svcs.fastapi.DepContainer,
-) -> BackendRunOrchestrationService:
-    return BackendRunOrchestrationService(
-        run_store=services.get(RunIntakeStore),
-        run_signal_queue=services.get(RunSignalQueue),
+) -> DialogueService:
+    return services.get(DialogueService)
+
+
+@dialogue_router.get("/dialogues/{dialogue_id}", response_model=DialogueDto)
+async def get_dialogue(
+    dialogue_id: UUID,
+    request: fastapi.Request,
+    dialogue_service: DialogueService = fastapi.Depends(get_dialogue_service),
+) -> DialogueDto:
+    dialogue = await dialogue_service.get_dialogue(
+        user_id=request.scope["state"]["user_id"],
+        dialogue_id=dialogue_id,
     )
-
-
-@agent_router.post("/runs", response_model=CreatedRunDto)
-async def create_agent_run(
-    agent_prompt: AgentPromptDto,
-    run_service: BackendRunOrchestrationService = fastapi.Depends(get_run_service),
-) -> CreatedRunDto:
-    created_run = await run_service.create_run(agent_prompt.prompt)
-    return CreatedRunV1Mapper.to_dto(created_run)
+    return DialogueV1Mapper.dialogue_to_dto(dialogue)
 ```
 
 Keep this route-level assembly small. If the service graph becomes reusable or
@@ -260,7 +266,7 @@ async def run_worker(registrars: list[Registrar]) -> None:
 
     async with svcs.Container(registry) as container:
         consumer = await container.aget(Consumer)
-        await consumer.run()
+        await consumer.agent_execution()
 
     await registry.aclose()
 ```
@@ -284,7 +290,7 @@ Example:
 
 ```python
 override_registrar = DependencyOverrideRegistrar(
-    factory_overrides={AgentRunExecutor: DummyRunExecutor},
+    factory_overrides={AgentExecutionExecutor: DummyAgentExecutionExecutor},
     value_overrides={},
 )
 
